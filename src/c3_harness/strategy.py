@@ -12,14 +12,15 @@ JsonObject = dict[str, Any]
 
 @dataclass
 class BasicStrategy:
-    """Small deterministic baseline policy.
+    """Deterministic competition policy.
 
-    The goal is not to be optimal. It is to provide a clear, testable harness
-    that always submits complete payloads and can be improved safely.
+    The policy stays fast enough for two-second turns, submits complete action
+    payloads, and uses only information allowed by the public game protocol.
     """
 
     hidden_cell_value: float = 0.0
     bet_confidence_margin: float = 1.0
+    steering_future_weight: float = 0.65
 
     def should_join(self, state: JsonObject) -> bool:
         return state.get("phase") == "opt_in"
@@ -51,11 +52,21 @@ class BasicStrategy:
     def choose_broadcast(self, state: JsonObject) -> str:
         matrix = state.get("payoff_matrix")
         if not matrix:
-            return "I am online and will submit complete actions."
+            return "Online. Broadcasts are noisy; actions are per-opponent."
 
         best_action, _ = self.best_average_action(matrix)
-        label = ACTION_TO_LABEL[best_action]
-        return f"I am prioritizing action {label} when the matrix supports it."
+        decoy = self.decoy_action(best_action, int(state.get("round_index", 0)))
+        other = self.decoy_action(decoy, int(state.get("round_index", 1)))
+        decoy_label = ACTION_TO_LABEL[decoy]
+        other_label = ACTION_TO_LABEL[other]
+        templates = [
+            "Reading every broadcast. My public signal is intentionally noisy.",
+            f"Testing a {decoy_label}/{other_label} mix; final-turn logic may invert.",
+            f"Leaning {decoy_label} if the table stays stable. Per-opponent overrides apply.",
+            "Bet signal and action signal are split this round.",
+            "I am using different actions per opponent, so aggregate tells are weak.",
+        ]
+        return templates[int(state.get("round_index", 0)) % len(templates)]
 
     def choose_actions(self, state: JsonObject) -> dict[str, int]:
         matrix = state.get("payoff_matrix")
@@ -66,9 +77,11 @@ class BasicStrategy:
 
         actions: dict[str, int] = {}
         for opponent_id in opponent_ids(state):
-            last_action = last_observed_opponent_action(state, opponent_id)
-            if matrix and last_action is not None:
-                actions[opponent_id] = self.best_response_to(matrix, last_action)
+            if matrix and is_br_last_bot(opponent_id):
+                actions[opponent_id] = self.choose_against_br_last(state, opponent_id, matrix)
+            elif matrix:
+                distribution = self.predict_opponent_distribution(state, opponent_id, matrix)
+                actions[opponent_id] = self.best_against_distribution(matrix, distribution)
             else:
                 actions[opponent_id] = default_action
         return actions
@@ -87,6 +100,67 @@ class BasicStrategy:
         ]
         return max(range(len(column_scores)), key=lambda action: column_scores[action])
 
+    def best_against_distribution(self, matrix: Matrix, distribution: dict[int, float]) -> int:
+        values = self.expected_values_against(matrix, distribution)
+        return max(range(len(values)), key=lambda action: values[action])
+
+    def expected_values_against(self, matrix: Matrix, distribution: dict[int, float]) -> list[float]:
+        return [
+            sum(
+                self.cell_value(matrix[action][opponent_action]) * probability
+                for opponent_action, probability in distribution.items()
+            )
+            for action in range(len(matrix))
+        ]
+
+    def choose_against_br_last(
+        self,
+        state: JsonObject,
+        opponent_id: str,
+        matrix: Matrix,
+    ) -> int:
+        distribution = self.predict_opponent_distribution(state, opponent_id, matrix)
+        current_values = self.expected_values_against(matrix, distribution)
+        if state.get("next_turn_final"):
+            return max(range(len(current_values)), key=lambda action: current_values[action])
+
+        # bot_br_last responds to the previous opponent action. Our action now
+        # can therefore steer its next action, so include a one-turn lookahead.
+        total_values: list[float] = []
+        for action, current_value in enumerate(current_values):
+            induced_next = self.best_response_to(matrix, action)
+            future_value = max(
+                self.cell_value(matrix[future_action][induced_next])
+                for future_action in range(len(matrix))
+            )
+            total_values.append(current_value + self.steering_future_weight * future_value)
+        return max(range(len(total_values)), key=lambda action: total_values[action])
+
+    def predict_opponent_distribution(
+        self,
+        state: JsonObject,
+        opponent_id: str,
+        matrix: Matrix,
+    ) -> dict[int, float]:
+        if is_br_last_bot(opponent_id):
+            previous_my_action = last_observed_my_action(state, opponent_id)
+            if previous_my_action is not None:
+                return peaked_distribution(self.best_response_to(matrix, previous_my_action), 0.9)
+
+        if is_ev_heuristic_bot(opponent_id):
+            best_action, _ = self.best_average_action(matrix)
+            return peaked_distribution(best_action, 0.8)
+
+        history_distribution = observed_opponent_distribution(state, opponent_id)
+        if history_distribution:
+            return history_distribution
+
+        best_action, _ = self.best_average_action(matrix)
+        return peaked_distribution(best_action, 0.55)
+
+    def decoy_action(self, best_action: int, round_index: int) -> int:
+        return (best_action + 1 + (round_index % 2)) % 3
+
     def cell_value(self, value: int | None) -> float:
         if value is None:
             return self.hidden_cell_value
@@ -103,12 +177,62 @@ def opponent_ids(state: JsonObject) -> list[str]:
 
 
 def last_observed_opponent_action(state: JsonObject, opponent_id: str) -> int | None:
+    for turn in reversed(matchup_history(state, opponent_id)):
+        action = first_int(turn, ("opponent_action", "their_action", "action"))
+        if action in LABEL_TO_ACTION.values():
+            return int(action)
+    return None
+
+
+def last_observed_my_action(state: JsonObject, opponent_id: str) -> int | None:
+    for turn in reversed(matchup_history(state, opponent_id)):
+        action = first_int(turn, ("my_action", "our_action"))
+        if action in LABEL_TO_ACTION.values():
+            return int(action)
+    return None
+
+
+def observed_opponent_distribution(state: JsonObject, opponent_id: str) -> dict[int, float] | None:
+    counts = {0: 1.0, 1: 1.0, 2: 1.0}
+    observations = 0
+    for turn in matchup_history(state, opponent_id):
+        action = first_int(turn, ("opponent_action", "their_action", "action"))
+        if action in LABEL_TO_ACTION.values():
+            counts[int(action)] += 1.0
+            observations += 1
+    if observations == 0:
+        return None
+    total = sum(counts.values())
+    return {action: count / total for action, count in counts.items()}
+
+
+def matchup_history(state: JsonObject, opponent_id: str) -> list[JsonObject]:
     for matchup in state.get("matchups", []):
         if matchup.get("opponent_id") != opponent_id:
             continue
-        history = matchup.get("turns") or matchup.get("history") or []
-        for turn in reversed(history):
-            action = turn.get("opponent_action")
-            if action in LABEL_TO_ACTION.values():
-                return int(action)
+        return list(matchup.get("turns") or matchup.get("history") or [])
+    return []
+
+
+def first_int(source: JsonObject, keys: tuple[str, ...]) -> int | None:
+    for key in keys:
+        value = source.get(key)
+        if value in LABEL_TO_ACTION.values():
+            return int(value)
     return None
+
+
+def peaked_distribution(action: int, probability: float) -> dict[int, float]:
+    spillover = (1.0 - probability) / 2.0
+    return {
+        candidate: probability if candidate == action else spillover
+        for candidate in LABEL_TO_ACTION.values()
+    }
+
+
+def is_br_last_bot(opponent_id: str) -> bool:
+    return "bot_br_last" in opponent_id
+
+
+def is_ev_heuristic_bot(opponent_id: str) -> bool:
+    return "bot_ev_heuristic" in opponent_id

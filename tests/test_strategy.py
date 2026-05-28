@@ -61,6 +61,75 @@ class StrategyTests(unittest.TestCase):
 
         self.assertEqual(opponent_ids(state), ["team_c"])
 
+    def test_broadcast_is_noisy_and_short(self):
+        state = {
+            "round_index": 3,
+            "payoff_matrix": [
+                [3, 3, 3],
+                [0, 0, 0],
+                [-1, -1, -1],
+            ],
+        }
+
+        message = BasicStrategy().choose_broadcast(state)
+
+        self.assertLessEqual(len(message), 280)
+        self.assertNotIn("prioritizing action R", message)
+
+    def test_bot_br_last_can_be_steered_before_final_turn(self):
+        state = {
+            "next_turn_final": False,
+            "payoff_matrix": [
+                [0, 0, 5],
+                [0, 4, 0],
+                [0, 0, 1],
+            ],
+            "matchups": [
+                {
+                    "opponent_id": "team_bot_br_last",
+                    "history": [{"my_action": 0, "opponent_action": 0}],
+                }
+            ],
+        }
+
+        actions = BasicStrategy().choose_actions(state)
+
+        self.assertEqual(actions["team_bot_br_last"], 1)
+
+    def test_bot_br_last_uses_current_payoff_on_final_turn(self):
+        state = {
+            "next_turn_final": True,
+            "payoff_matrix": [
+                [0, 0, 5],
+                [0, 4, 0],
+                [0, 0, 1],
+            ],
+            "matchups": [
+                {
+                    "opponent_id": "team_bot_br_last",
+                    "history": [{"my_action": 0, "opponent_action": 0}],
+                }
+            ],
+        }
+
+        actions = BasicStrategy().choose_actions(state)
+
+        self.assertEqual(actions["team_bot_br_last"], 0)
+
+    def test_ev_heuristic_bot_is_treated_as_row_average_player(self):
+        state = {
+            "payoff_matrix": [
+                [0, 0, 0],
+                [0, 0, 3],
+                [3, 3, -1],
+            ],
+            "matchups": [{"opponent_id": "team_bot_ev_heuristic"}],
+        }
+
+        actions = BasicStrategy().choose_actions(state)
+
+        self.assertEqual(actions["team_bot_ev_heuristic"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

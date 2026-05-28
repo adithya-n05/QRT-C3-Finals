@@ -17,6 +17,7 @@ trace quickly.
 7. `src/c3_harness/telemetry.py` - local market event logging and replay capture.
 8. `src/c3_harness/backtest.py` - historical replay and counterfactual scoring.
 9. `tests/` - executable checks for strategy and harness behavior.
+10. `scripts/` - stage-2 runbook helpers (live capture entrypoint).
 
 ## File Map
 
@@ -31,6 +32,8 @@ trace quickly.
 │   ├── COMPETITION_STRATEGY.md
 │   ├── C3_GAME_PROTOCOL.md
 │   └── REPOSITORY_STRUCTURE.md
+├── scripts/
+│   └── run_stage2_capture.sh
 ├── src/
 │   └── c3_harness/
 │       ├── __init__.py
@@ -87,6 +90,7 @@ trace quickly.
 - Add strategic decisions to `strategy.py` until the file becomes too large;
   then split by responsibility and update this map.
 - Add tests in `tests/` that mirror the module under test.
+- Add runbook scripts in `scripts/` for launch patterns used in live capture.
 - Add design notes or operational runbooks in `docs/`.
 - Keep temporary outputs in `stage2_logs/` and add to `.gitignore`.
 

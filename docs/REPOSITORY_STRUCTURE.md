@@ -10,10 +10,11 @@ trace quickly.
 2. `docs/REPOSITORY_STRUCTURE.md` - this file; use it to locate ownership and
    decide where new files belong.
 3. `docs/C3_GAME_PROTOCOL.md` - gameplay, API, scoring, and deadline rules.
-4. `docs/AGENT_FIRST_HARNESS.md` - why the repo is shaped this way and how to
+4. `docs/COMPETITION_STRATEGY.md` - current tactical read and live playbook.
+5. `docs/AGENT_FIRST_HARNESS.md` - why the repo is shaped this way and how to
    keep it legible.
-5. `src/c3_harness/runner.py` - runtime loop and phase dispatch.
-6. `tests/` - executable checks for protocol helpers and strategy behavior.
+6. `src/c3_harness/runner.py` - runtime loop and phase dispatch.
+7. `tests/` - executable checks for protocol helpers and strategy behavior.
 
 ## File Map
 
@@ -25,6 +26,7 @@ trace quickly.
 ├── pyproject.toml
 ├── docs/
 │   ├── AGENT_FIRST_HARNESS.md
+│   ├── COMPETITION_STRATEGY.md
 │   ├── C3_GAME_PROTOCOL.md
 │   └── REPOSITORY_STRUCTURE.md
 ├── src/
@@ -49,6 +51,8 @@ trace quickly.
 - `.env.example`: non-secret environment variable template.
 - `pyproject.toml`: Python project metadata.
 - `docs/AGENT_FIRST_HARNESS.md`: agent-first design principles and guardrails.
+- `docs/COMPETITION_STRATEGY.md`: opponent findings, broadcast policy, betting
+  guidance, and live operational plan.
 - `docs/C3_GAME_PROTOCOL.md`: local operational summary of the live C3 rules.
 - `docs/REPOSITORY_STRUCTURE.md`: source of truth for file purpose and
   navigation.

@@ -33,5 +33,7 @@ PYTHONPATH=src python -m unittest discover -s tests
   model navigation instructions.
 - [docs/C3_GAME_PROTOCOL.md](docs/C3_GAME_PROTOCOL.md): local summary of the
   game protocol and scoring rules.
+- [docs/COMPETITION_STRATEGY.md](docs/COMPETITION_STRATEGY.md): current
+  opponent model, broadcast policy, and live playbook.
 - [docs/AGENT_FIRST_HARNESS.md](docs/AGENT_FIRST_HARNESS.md): design principles
   for keeping this repo useful to future coding agents.

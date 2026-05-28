@@ -18,6 +18,7 @@ class HarnessConfig:
     log_root: str = "stage2_logs"
     log_run_name: str | None = None
     public_logs_recent: int = 10
+    capture_leaderboard: bool = True
 
     @classmethod
     def from_env(cls, *, live: bool = False) -> "HarnessConfig":
@@ -31,6 +32,8 @@ class HarnessConfig:
             log_root=os.getenv("C3_LOG_ROOT", "stage2_logs"),
             log_run_name=os.getenv("C3_LOG_RUN_NAME"),
             public_logs_recent=int(os.getenv("C3_PUBLIC_LOGS_RECENT", "10")),
+            capture_leaderboard=os.getenv("C3_CAPTURE_LEADERBOARD", "1")
+            not in {"0", "false", "False", "FALSE"},
         )
 
     def auth_headers(self) -> dict[str, str]:

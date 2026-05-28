@@ -274,6 +274,7 @@ def main(argv: list[str] | None = None) -> int:
         live=config.live,
         logger=logger,
         public_logs_recent=config.public_logs_recent,
+        capture_leaderboard=config.capture_leaderboard,
     )
 
     if args.check:

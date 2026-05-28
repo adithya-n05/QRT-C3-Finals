@@ -68,6 +68,7 @@ for timing.
 To force a richer market ingest for everyone’s activity, set:
 ```bash
 export C3_PUBLIC_LOGS_RECENT=20
+export C3_CAPTURE_LEADERBOARD=1
 ```
 This captures:
 - `/state` snapshots (includes matrix, phase, and round/turn context)

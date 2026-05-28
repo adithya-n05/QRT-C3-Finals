@@ -51,6 +51,47 @@ class StrategyTests(unittest.TestCase):
 
         self.assertIsNone(BasicStrategy().choose_bet(state))
 
+    def test_bet_uses_forecast_counts_when_matchups_are_known(self):
+        state = {
+            "phase": "opt_in",
+            "bet_proposition": "R>=*",
+            "payoff_matrix": [
+                [3, 3, 3],
+                [0, 0, 0],
+                [-1, -1, -1],
+            ],
+            "matchups": [
+                {"opponent_id": "team_bot_ev_heuristic"},
+                {"opponent_id": "team_other"},
+            ],
+        }
+
+        self.assertTrue(BasicStrategy().choose_bet(state))
+
+    def test_bet_abstains_when_forecast_counts_are_close(self):
+        state = {
+            "phase": "opt_in",
+            "bet_proposition": "R>P",
+            "payoff_matrix": [
+                [3, 0, 3],
+                [0, 3, 0],
+                [-1, -1, -1],
+            ],
+            "matchups": [
+                {"opponent_id": "team_bot_ev_heuristic"},
+                {
+                    "opponent_id": "team_other",
+                    "history": [
+                        {"opponent_action": 1},
+                        {"opponent_action": 1},
+                        {"opponent_action": 1},
+                    ],
+                },
+            ],
+        }
+
+        self.assertIsNone(BasicStrategy().choose_bet(state))
+
     def test_opponent_ids_ignores_dashboard_style_matchups(self):
         state = {
             "matchups": [

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .betting import ACTION_TO_LABEL, LABEL_TO_ACTION, proposition_labels
+from .betting import ACTION_LABELS, ACTION_TO_LABEL, LABEL_TO_ACTION, evaluate_proposition, proposition_labels
 
 
 Matrix = list[list[int | None]]
@@ -20,6 +20,7 @@ class BasicStrategy:
 
     hidden_cell_value: float = 0.0
     bet_confidence_margin: float = 1.0
+    bet_count_margin: float = 2.0
     steering_future_weight: float = 0.65
 
     def should_join(self, state: JsonObject) -> bool:
@@ -30,6 +31,13 @@ class BasicStrategy:
         matrix = state.get("payoff_matrix")
         if not proposition or not matrix:
             return None
+
+        forecast_counts = self.forecast_action_counts(state, matrix)
+        if forecast_counts:
+            count_margin = proposition_count_margin(proposition, forecast_counts)
+            if count_margin < self.bet_count_margin:
+                return None
+            return evaluate_proposition(proposition, forecast_counts)
 
         best_action, margin = self.best_average_action(matrix)
         if margin < self.bet_confidence_margin:
@@ -85,6 +93,29 @@ class BasicStrategy:
             else:
                 actions[opponent_id] = default_action
         return actions
+
+    def forecast_action_counts(self, state: JsonObject, matrix: Matrix) -> dict[str, int] | None:
+        ids = opponent_ids(state)
+        if not ids:
+            return None
+
+        counts = {label: 0 for label in ACTION_LABELS}
+        for opponent_id in ids:
+            if is_br_last_bot(opponent_id):
+                our_action = self.choose_against_br_last(state, opponent_id, matrix)
+            else:
+                distribution = self.predict_opponent_distribution(state, opponent_id, matrix)
+                our_action = self.best_against_distribution(matrix, distribution)
+
+            opponent_distribution = self.predict_opponent_distribution(state, opponent_id, matrix)
+            opponent_action = max(
+                opponent_distribution,
+                key=lambda action: opponent_distribution[action],
+            )
+
+            counts[ACTION_TO_LABEL[our_action]] += 1
+            counts[ACTION_TO_LABEL[opponent_action]] += 1
+        return counts
 
     def best_average_action(self, matrix: Matrix) -> tuple[int, float]:
         row_scores = [sum(self.cell_value(cell) for cell in row) / len(row) for row in matrix]
@@ -236,3 +267,13 @@ def is_br_last_bot(opponent_id: str) -> bool:
 
 def is_ev_heuristic_bot(opponent_id: str) -> bool:
     return "bot_ev_heuristic" in opponent_id
+
+
+def proposition_count_margin(proposition: str, counts: dict[str, int]) -> int:
+    left, right, kind = proposition_labels(proposition)
+    if kind == "modal":
+        competitors = [count for label, count in counts.items() if label != left]
+        return counts[left] - max(competitors)
+    if right is None:
+        return 0
+    return abs(counts[left] - counts[right])

@@ -24,18 +24,25 @@ def normalize_phase(raw_phase: Any) -> str:
     return normalized
 
 
+def should_retry_api_error(exc: C3HTTPError) -> bool:
+    return exc.status in {429} or exc.status >= 500
+
+
 @dataclass
 class HarnessRunner:
     client: C3Client
     strategy: BasicStrategy
     live: bool = False
     logger: MarketLogger | None = None
+    public_logs_recent: int = 10
+    capture_leaderboard: bool = True
     submitted_keys: set[tuple[Any, ...]] = field(default_factory=set)
 
     def step(self) -> JsonObject:
         state = self.client.state()
         if self.logger:
             self.logger.log_state(state)
+            self._capture_market_context()
         phase = normalize_phase(state.get("phase"))
 
         if phase == "opt_in":
@@ -46,6 +53,24 @@ class HarnessRunner:
             return self._handle_action(state)
 
         return {"phase": phase, "operation": "none", "reason": "phase has no submission"}
+
+    def _capture_market_context(self) -> None:
+        if not self.logger:
+            return
+        try:
+            logs = self.client.logs(recent=self.public_logs_recent)
+        except C3HTTPError:
+            return
+        self.logger.log_public_logs(logs)
+
+        if not self.capture_leaderboard:
+            return
+
+        try:
+            leaderboard = self.client.leaderboard()
+        except C3HTTPError:
+            return
+        self.logger.log_leaderboard(leaderboard)
 
     def _handle_opt_in(self, state: JsonObject) -> JsonObject:
         round_index = int(state["round_index"])
@@ -170,6 +195,7 @@ def main(argv: list[str] | None = None) -> int:
         strategy=BasicStrategy(),
         live=config.live,
         logger=logger,
+        public_logs_recent=config.public_logs_recent,
     )
 
     loops = 0
@@ -177,6 +203,19 @@ def main(argv: list[str] | None = None) -> int:
         try:
             result = runner.step()
         except C3HTTPError as exc:
+            if should_retry_api_error(exc) and not args.once:
+                print(
+                    json.dumps(
+                        {
+                            "error": "transient_api_error",
+                            "status": exc.status,
+                            "detail": exc.body,
+                            "action": "retry",
+                        }
+                    )
+                )
+                time.sleep(config.poll_interval_seconds * 2)
+                continue
             print(json.dumps({"error": str(exc), "status": exc.status, "body": exc.body}))
             return 1
 

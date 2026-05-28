@@ -14,11 +14,14 @@ trace quickly.
 5. `docs/BACKTEST_RESULTS.md` - latest stored-log replay results.
 6. `docs/AGENT_FIRST_HARNESS.md` - why the repo is shaped this way and how to keep it
    legible.
-7. `src/c3_harness/runner.py` - runtime loop and phase dispatch.
-8. `src/c3_harness/telemetry.py` - local market event logging and replay capture.
-9. `src/c3_harness/backtest.py` - historical replay and counterfactual scoring.
-10. `tests/` - executable checks for strategy and harness behavior.
-11. `scripts/` - stage-2 runbook helpers (live capture entrypoint).
+7. `docs/ROUND2_PHASE_EXECUTION_PLAN.md` - phase-by-phase round2 execution plan.
+8. `docs/OPENAPI_INTELLIGENCE.md` - OpenAPI validation and schema awareness notes.
+9. `docs/BACKTEST_LOGGING_RUNBOOK.md` - capture/replay workflow and live-readiness checks.
+10. `src/c3_harness/runner.py` - runtime loop and phase dispatch.
+11. `src/c3_harness/telemetry.py` - local market event logging and replay capture.
+12. `src/c3_harness/backtest.py` - historical replay and counterfactual scoring.
+13. `tests/` - executable checks for strategy and harness behavior.
+14. `scripts/` - stage-2 runbook helpers (live capture entrypoint).
 
 ## File Map
 
@@ -33,6 +36,9 @@ trace quickly.
 │   ├── BACKTEST_RESULTS.md
 │   ├── COMPETITION_STRATEGY.md
 │   ├── C3_GAME_PROTOCOL.md
+│   ├── ROUND2_PHASE_EXECUTION_PLAN.md
+│   ├── OPENAPI_INTELLIGENCE.md
+│   ├── BACKTEST_LOGGING_RUNBOOK.md
 │   └── REPOSITORY_STRUCTURE.md
 ├── scripts/
 │   └── run_stage2_capture.sh
@@ -68,6 +74,9 @@ trace quickly.
 - `pyproject.toml`: Python project metadata.
 - `docs/AGENT_FIRST_HARNESS.md`: agent-first design principles and guardrails.
 - `docs/BACKTEST_RESULTS.md`: latest replay summaries from stored public logs.
+- `docs/BACKTEST_LOGGING_RUNBOOK.md`: round2 logging + replay workflow.
+- `docs/ROUND2_PHASE_EXECUTION_PLAN.md`: phase execution and promotion criteria.
+- `docs/OPENAPI_INTELLIGENCE.md`: OpenAPI-driven guardrails and recovery plan.
 - `docs/COMPETITION_STRATEGY.md`: opponent findings, broadcast policy, betting
   guidance, and live operational plan.
 - `docs/C3_GAME_PROTOCOL.md`: local operational summary of the live C3 rules.

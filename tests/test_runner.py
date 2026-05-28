@@ -1,6 +1,6 @@
 import unittest
 
-from c3_harness.runner import HarnessRunner, normalize_phase
+from c3_harness.runner import HarnessRunner, normalize_phase, should_retry_api_error
 from c3_harness.strategy import BasicStrategy
 
 
@@ -21,6 +21,9 @@ class StubClient:
 
     def action(self, **kwargs):
         raise AssertionError("action should not be called in dry-run")
+
+    def logs(self, recent=3):
+        return {"logs": []}
 
 
 class StrategyFixture(BasicStrategy):
@@ -80,6 +83,20 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(normalize_phase("ROUND_BROADCAST"), "broadcast")
         self.assertEqual(normalize_phase("action"), "action")
         self.assertEqual(normalize_phase("Round_Complete"), "complete")
+
+    def test_should_retry_api_error_for_5xx(self) -> None:
+        from c3_harness.api import C3HTTPError
+
+        self.assertTrue(should_retry_api_error(C3HTTPError(500, "server error")))
+        self.assertTrue(should_retry_api_error(C3HTTPError(502, "bad gateway")))
+        self.assertTrue(should_retry_api_error(C3HTTPError(504, "gateway timeout")))
+
+    def test_should_retry_429_rate_limit_as_transient(self) -> None:
+        from c3_harness.api import C3HTTPError
+
+        self.assertFalse(should_retry_api_error(C3HTTPError(400, "bad request")))
+        self.assertFalse(should_retry_api_error(C3HTTPError(401, "unauthorized")))
+        self.assertTrue(should_retry_api_error(C3HTTPError(429, "rate limited")))
 
 
 if __name__ == "__main__":

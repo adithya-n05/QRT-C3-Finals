@@ -135,6 +135,7 @@ class MarketLogger:
             turn_index=_safe_int(state.get("turn_index")),
             phase=str(state.get("phase")),
             state=normalized,
+            payload={"full_state": state},
         )
         self._append_raw_line(self.events_path, event.to_dict())
 
@@ -158,6 +159,28 @@ class MarketLogger:
             state=normalized_state,
             payload=compact_payload,
             response=response,
+        )
+        self._append_raw_line(self.events_path, event.to_dict())
+
+    def log_public_logs(self, logs: JsonObject | list[JsonObject]) -> None:
+        if not self.enabled:
+            return
+        event = MarketEvent(
+            kind="public_logs",
+            run_id=self.run_id,
+            metadata={"source": "public_logs_endpoint"},
+            payload={"logs": logs},
+        )
+        self._append_raw_line(self.events_path, event.to_dict())
+
+    def log_leaderboard(self, leaderboard: JsonObject) -> None:
+        if not self.enabled:
+            return
+        event = MarketEvent(
+            kind="leaderboard",
+            run_id=self.run_id,
+            metadata={"source": "leaderboard_endpoint"},
+            payload={"leaderboard": leaderboard},
         )
         self._append_raw_line(self.events_path, event.to_dict())
 

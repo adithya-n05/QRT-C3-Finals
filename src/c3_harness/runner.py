@@ -28,6 +28,79 @@ def should_retry_api_error(exc: C3HTTPError) -> bool:
     return exc.status in {429} or exc.status >= 500
 
 
+def _classify_api_status(status: int) -> str:
+    if status in {401, 403}:
+        return "auth_failed"
+    if status == 404:
+        return "not_found"
+    if status in {429, 500, 502, 503, 504}:
+        return "server_or_throttle"
+    if status >= 500:
+        return "server_error"
+    return "unexpected"
+
+
+def connectivity_report(
+    client: C3Client,
+    *,
+    include_auth_state: bool = True,
+    include_health: bool = True,
+) -> dict[str, Any]:
+    report: dict[str, Any] = {
+        "base_url": client.config.base_url,
+        "game_key_present": bool(client.config.game_key),
+        "checks": [],
+    }
+
+    if include_health:
+        try:
+            health = client.health()
+            report["checks"].append(
+                {
+                    "endpoint": "/health",
+                    "ok": True,
+                    "status": 200,
+                    "body": health,
+                }
+            )
+        except C3HTTPError as exc:
+            report["checks"].append(
+                {
+                    "endpoint": "/health",
+                    "ok": False,
+                    "status": exc.status,
+                    "category": _classify_api_status(exc.status),
+                    "body": exc.body,
+                }
+            )
+
+    if include_auth_state:
+        try:
+            state = client.state()
+            report["checks"].append(
+                {
+                    "endpoint": "/state",
+                    "ok": True,
+                    "status": 200,
+                    "phase": state.get("phase"),
+                    "round_index": state.get("round_index"),
+                    "team_id": state.get("team_id"),
+                }
+            )
+        except C3HTTPError as exc:
+            report["checks"].append(
+                {
+                    "endpoint": "/state",
+                    "ok": False,
+                    "status": exc.status,
+                    "category": _classify_api_status(exc.status),
+                    "body": exc.body,
+                }
+            )
+
+    return report
+
+
 @dataclass
 class HarnessRunner:
     client: C3Client
@@ -171,6 +244,7 @@ class HarnessRunner:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the QRT.C3 agent harness.")
     parser.add_argument("--live", action="store_true", help="submit live POSTs")
+    parser.add_argument("--check", action="store_true", help="run connectivity checks and exit")
     parser.add_argument("--once", action="store_true", help="run one poll/decision step")
     parser.add_argument("--max-loops", type=int, default=None, help="stop after N loops")
     parser.add_argument("--log-market", action="store_true", help="persist state and decision log")
@@ -182,7 +256,11 @@ def main(argv: list[str] | None = None) -> int:
             "C3_GAME_KEY is not set; authenticated /state calls will fail. "
             "Set it before running the harness."
         )
-        return 2
+        if args.check:
+            # Keep running connectivity checks for public endpoints in read-only mode.
+            config = HarnessConfig.from_env(live=False)
+        else:
+            return 2
 
     logger = MarketLogger(
         enabled=args.log_market or config.log_market,
@@ -197,6 +275,12 @@ def main(argv: list[str] | None = None) -> int:
         logger=logger,
         public_logs_recent=config.public_logs_recent,
     )
+
+    if args.check:
+        report = connectivity_report(C3Client(config, logger=logger), include_auth_state=True, include_health=True)
+        all_ok = all(item.get("ok") for item in report["checks"])
+        print(json.dumps(report, sort_keys=True))
+        return 0 if all_ok else 1
 
     loops = 0
     while True:

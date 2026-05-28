@@ -92,6 +92,37 @@ class StrategyTests(unittest.TestCase):
 
         self.assertIsNone(BasicStrategy().choose_bet(state))
 
+    def test_join_skips_catastrophically_negative_rounds(self):
+        state = {
+            "phase": "opt_in",
+            "pot": 5,
+            "payoff_matrix": [
+                [-3, -3, -3],
+                [-2, -2, -2],
+                [-1, -1, -1],
+            ],
+            "matchups": [
+                {"opponent_id": "team_a"},
+                {"opponent_id": "team_b"},
+            ],
+        }
+
+        self.assertFalse(BasicStrategy().should_join(state))
+
+    def test_join_accepts_positive_expected_rounds(self):
+        state = {
+            "phase": "opt_in",
+            "pot": 5,
+            "payoff_matrix": [
+                [1, 1, 1],
+                [0, 0, 0],
+                [-1, -1, -1],
+            ],
+            "matchups": [{"opponent_id": "team_a"}],
+        }
+
+        self.assertTrue(BasicStrategy().should_join(state))
+
     def test_opponent_ids_ignores_dashboard_style_matchups(self):
         state = {
             "matchups": [

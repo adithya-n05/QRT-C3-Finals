@@ -22,9 +22,18 @@ class BasicStrategy:
     bet_confidence_margin: float = 1.0
     bet_count_margin: float = 2.0
     steering_future_weight: float = 0.65
+    expected_turns: float = 8.0
+    default_opponent_count: int = 3
 
     def should_join(self, state: JsonObject) -> bool:
-        return state.get("phase") == "opt_in"
+        if state.get("phase") != "opt_in":
+            return False
+
+        matrix = state.get("payoff_matrix")
+        if not matrix:
+            return True
+
+        return self.expected_round_value(state, matrix) >= 0.0
 
     def choose_bet(self, state: JsonObject) -> bool | None:
         proposition = state.get("bet_proposition")
@@ -93,6 +102,16 @@ class BasicStrategy:
             else:
                 actions[opponent_id] = default_action
         return actions
+
+    def expected_round_value(self, state: JsonObject, matrix: Matrix) -> float:
+        best_action, _ = self.best_average_action(matrix)
+        expected_turn_payoff = sum(
+            self.cell_value(cell)
+            for cell in matrix[best_action]
+        ) / len(matrix[best_action])
+        opponent_count = len(opponent_ids(state)) or self.default_opponent_count
+        participation_reward = float(state.get("pot") or 5)
+        return participation_reward + expected_turn_payoff * self.expected_turns * opponent_count
 
     def forecast_action_counts(self, state: JsonObject, matrix: Matrix) -> dict[str, int] | None:
         ids = opponent_ids(state)

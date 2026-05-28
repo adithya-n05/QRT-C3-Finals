@@ -21,6 +21,18 @@ it would make. To submit to the live game:
 PYTHONPATH=src python -m c3_harness.runner --live
 ```
 
+Validate API health and key wiring before round execution:
+
+```bash
+export C3_GAME_KEY="bagel-fancy-jade"
+PYTHONPATH=src python -m c3_harness.runner --check
+```
+
+`--check` returns:
+- `/health` status
+- `/state` status
+- explicit reason buckets (`auth_failed`, `server_or_throttle`, etc.)
+
 ## Verify
 
 ```bash
@@ -52,6 +64,15 @@ This starts a live polling loop immediately with market logging enabled and writ
 NDJSON into `stage2_logs/<run_id>/<run_name>_events.ndjson`.
 Use extra flags to control runtime (`--max-loops`, `--once`) and `C3_POLL_INTERVAL_SECONDS`
 for timing.
+
+To force a richer market ingest for everyone’s activity, set:
+```bash
+export C3_PUBLIC_LOGS_RECENT=20
+```
+This captures:
+- `/state` snapshots (includes matrix, phase, and round/turn context)
+- `/logs` public rounds snapshots (broader team activity and completed rounds)
+- `/leaderboard` snapshots on every poll
 
 Run local replay on completed rounds:
 

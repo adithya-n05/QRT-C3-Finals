@@ -1,0 +1,125 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - img "QRT" [ref=e3]
+    - heading "QRT.C3 Grand Final" [level=1] [ref=e4]
+    - generic [ref=e5]: broadcast
+    - generic [ref=e6]: round 1
+    - generic [ref=e7]: 9ms p95 · 39 rps
+    - generic [ref=e8]:
+      - generic "Open this live dashboard at this URL" [ref=e9]: https://c3.qwerty.technology/dashboard
+      - link "Cheat sheet" [ref=e10] [cursor=pointer]:
+        - /url: /docs/cheatsheet
+      - link "Rules" [ref=e11] [cursor=pointer]:
+        - /url: /docs/rules
+      - link "API" [ref=e12] [cursor=pointer]:
+        - /url: /docs/api
+      - link "Docs" [ref=e13] [cursor=pointer]:
+        - /url: /docs
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - heading "Current round" [level=2] [ref=e17]
+        - generic [ref=e18]:
+          - generic [ref=e19]: broadcast closes in
+          - text: 4.8s
+        - generic [ref=e20]:
+          - generic [ref=e22]:
+            - generic [ref=e23]: "Active:"
+            - generic [ref=e24]: bot_br_last
+            - generic [ref=e25]: bot_ev_heuristic
+            - generic [ref=e26]: bot_gpt_nano
+            - generic [ref=e27]: bot_random_action
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - generic [ref=e31]: R
+              - generic [ref=e32]: P
+              - generic [ref=e33]: S
+              - generic [ref=e34]: R
+              - generic [ref=e35]: "-2"
+              - generic [ref=e36]: "+2"
+              - generic [ref=e37]: "+3"
+              - generic [ref=e38]: P
+              - generic [ref=e39]: "-2"
+              - generic [ref=e40]: "+2"
+              - generic [ref=e41]: "0"
+              - generic [ref=e42]: S
+              - generic [ref=e43]: "-3"
+              - generic [ref=e44]: "-3"
+              - generic [ref=e45]: "-2"
+            - generic [ref=e46]: payoff for row-player when opponent plays column
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Action stream" [level=2] [ref=e49]
+          - list [ref=e50]
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - heading "Betting market" [level=2] [ref=e53]
+            - generic [ref=e54]:
+              - generic [ref=e55]:
+                - generic [ref=e56]: "Round 1:"
+                - generic [ref=e57]: S>=*
+              - generic [ref=e58]:
+                - generic [ref=e59]: ✓ 2
+                - generic [ref=e60]: ✗ 1
+                - generic [ref=e61]: abs 1
+          - generic [ref=e63]:
+            - heading "News feed" [level=2] [ref=e64]
+            - list [ref=e65]:
+              - generic [ref=e66]: No news yet.
+          - generic [ref=e67]:
+            - heading "Round 1 — broadcasts (live)" [level=2] [ref=e68]
+            - generic [ref=e70]:
+              - generic [ref=e71]: bot_random_action
+              - generic [ref=e72]: "bot_random_action: I will reward cooperation."
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - heading "Leaderboard" [level=2] [ref=e75]
+        - table [ref=e77]:
+          - rowgroup [ref=e78]:
+            - row "# Team Pay Pot Bet Pen Total" [ref=e79]:
+              - columnheader "#" [ref=e80]
+              - columnheader "Team" [ref=e81]
+              - columnheader "Pay" [ref=e82]
+              - columnheader "Pot" [ref=e83]
+              - columnheader "Bet" [ref=e84]
+              - columnheader "Pen" [ref=e85]
+              - columnheader "Total" [ref=e86]
+          - rowgroup [ref=e87]:
+            - row "1 bot_br_last 0 0 0 0 0" [ref=e88]:
+              - cell "1" [ref=e89]
+              - cell "bot_br_last" [ref=e90]: bot_br_last
+              - cell "0" [ref=e92]
+              - cell "0" [ref=e93]
+              - cell "0" [ref=e94]
+              - cell "0" [ref=e95]
+              - cell "0" [ref=e96]
+            - row "2 bot_ev_heuristic 0 0 0 0 0" [ref=e97]:
+              - cell "2" [ref=e98]
+              - cell "bot_ev_heuristic" [ref=e99]: bot_ev_heuristic
+              - cell "0" [ref=e101]
+              - cell "0" [ref=e102]
+              - cell "0" [ref=e103]
+              - cell "0" [ref=e104]
+              - cell "0" [ref=e105]
+            - row "3 bot_gpt_nano 0 0 0 0 0" [ref=e106]:
+              - cell "3" [ref=e107]
+              - cell "bot_gpt_nano" [ref=e108]: bot_gpt_nano
+              - cell "0" [ref=e110]
+              - cell "0" [ref=e111]
+              - cell "0" [ref=e112]
+              - cell "0" [ref=e113]
+              - cell "0" [ref=e114]
+            - row "4 bot_random_action 0 0 0 0 0" [ref=e115]:
+              - cell "4" [ref=e116]
+              - cell "bot_random_action" [ref=e117]: bot_random_action
+              - cell "0" [ref=e119]
+              - cell "0" [ref=e120]
+              - cell "0" [ref=e121]
+              - cell "0" [ref=e122]
+              - cell "0" [ref=e123]
+      - generic [ref=e124]:
+        - heading "Score over rounds" [level=2] [ref=e125]
+        - generic [ref=e127]: No completed rounds yet.
+  - generic [ref=e128]:
+    - generic [ref=e129]: Polling /dashboard/snapshot every 500ms
+    - generic [ref=e130]: connected · 15:00:07

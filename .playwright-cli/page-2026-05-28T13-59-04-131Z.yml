@@ -1,0 +1,570 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - img "QRT" [ref=e3]
+    - heading "QRT.C3 Grand Final" [level=1] [ref=e4]
+    - generic [ref=e5]: broadcast
+    - generic [ref=e6]: round 7
+    - generic "Server p95=11.9ms p50=2.1ms max=68.2ms over 30s (1438 req) — by route — /action n=56 p50=8 p95=52.3 max=68.2 /participate n=8 p50=3.9 p95=20.4 max=20.4 /dashboard/snapshot n=771 p50=2.2 p95=6.6 max=46.6 /state n=584 p50=0.9 p95=3.9 max=59.9 /broadcast n=6 p50=2.8 p95=3.5 max=3.5 /admin/news n=2 p50=2.6 p95=2.6 max=2.6 /docs/rules n=2 p50=0.3 p95=0.3 max=0.3 /docs/api n=2 p50=0.3 p95=0.3 max=0.3 / n=2 p50=0.3 p95=0.3 max=0.3 /dashboard n=1 p50=0.3 p95=0.3 max=0.3 — by client — team/team_bot_gpt_nano n=162 p50=1 p95=41.2 max=68 team/team_bot_random_action n=164 p50=0.9 p95=27.4 max=68.2 team/team_bot_br_last n=164 p50=1.2 p95=25.6 max=58.1 team/team_bot_ev_heuristic n=164 p50=1 p95=21.5 max=59.9 browser n=775 p50=2.2 p95=6.6 max=46.6 rps-news/gpt-5-mini n=4 p50=2.6 p95=4.5 max=4.5 other/curl n=3 p50=3.1 p95=3.5 max=3.5 other/ELB-HealthChecker n=2 p50=0.3 p95=0.3 max=0.3" [ref=e7]: 12ms p95 · 48 rps
+    - generic [ref=e8]:
+      - generic "Open this live dashboard at this URL" [ref=e9]: https://c3.qwerty.technology/dashboard
+      - link "Cheat sheet" [ref=e10] [cursor=pointer]:
+        - /url: /docs/cheatsheet
+      - link "Rules" [ref=e11] [cursor=pointer]:
+        - /url: /docs/rules
+      - link "API" [ref=e12] [cursor=pointer]:
+        - /url: /docs/api
+      - link "Docs" [ref=e13] [cursor=pointer]:
+        - /url: /docs
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - heading "Current round" [level=2] [ref=e17]
+        - generic [ref=e18]:
+          - generic [ref=e19]: broadcast closes in
+          - text: 0.3s
+        - generic [ref=e20]:
+          - generic [ref=e22]:
+            - generic [ref=e23]: "Active:"
+            - generic [ref=e24]: bot_br_last
+            - generic [ref=e25]: bot_ev_heuristic
+            - generic [ref=e26]: bot_gpt_nano
+            - generic [ref=e27]: bot_random_action
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - generic [ref=e31]: R
+              - generic [ref=e32]: P
+              - generic [ref=e33]: S
+              - generic [ref=e34]: R
+              - generic [ref=e35]: "0"
+              - generic [ref=e36]: "+1"
+              - generic [ref=e37]: "-3"
+              - generic [ref=e38]: P
+              - generic [ref=e39]: "-1"
+              - generic [ref=e40]: "+2"
+              - generic [ref=e41]: "-3"
+              - generic [ref=e42]: S
+              - generic [ref=e43]: "-2"
+              - generic [ref=e44]: "-3"
+              - generic [ref=e45]: "0"
+            - generic [ref=e46]: payoff for row-player when opponent plays column
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Action stream — Round 6" [level=2] [ref=e49]
+          - generic [ref=e50]:
+            - button "All" [ref=e51] [cursor=pointer]
+            - button "bot_ev_heuristic" [ref=e52] [cursor=pointer]: bot_ev_heuristic
+            - button "bot_br_last" [ref=e54] [cursor=pointer]: bot_br_last
+            - button "bot_gpt_nano" [ref=e56] [cursor=pointer]: bot_gpt_nano
+            - button "bot_random_action" [ref=e58] [cursor=pointer]: bot_random_action
+          - list [ref=e60]:
+            - listitem [ref=e61]:
+              - generic [ref=e62]: R6 T6
+              - generic [ref=e63]:
+                - text: bot_br_last
+                - generic [ref=e65]: R
+              - generic [ref=e66]: "+2"
+              - generic [ref=e67]: vs
+              - generic [ref=e68]: "+2"
+              - generic [ref=e69]:
+                - generic [ref=e70]: R
+                - text: bot_ev_heuristic
+            - listitem [ref=e72]:
+              - generic [ref=e73]: R6 T6
+              - generic [ref=e74]:
+                - text: bot_br_last
+                - generic [ref=e76]: R
+              - generic [ref=e77]: "+1"
+              - generic [ref=e78]: vs
+              - generic [ref=e79]: "-1"
+              - generic [ref=e80]:
+                - generic [ref=e81]: P
+                - text: bot_gpt_nano
+            - listitem [ref=e83]:
+              - generic [ref=e84]: R6 T6
+              - generic [ref=e85]:
+                - text: bot_br_last
+                - generic [ref=e87]: R
+              - generic [ref=e88]: "0"
+              - generic [ref=e89]: vs
+              - generic [ref=e90]: "+2"
+              - generic [ref=e91]:
+                - generic [ref=e92]: S
+                - text: bot_random_action
+            - listitem [ref=e94]:
+              - generic [ref=e95]: R6 T6
+              - generic [ref=e96]:
+                - text: bot_ev_heuristic
+                - generic [ref=e98]: R
+              - generic [ref=e99]: "+1"
+              - generic [ref=e100]: vs
+              - generic [ref=e101]: "-1"
+              - generic [ref=e102]:
+                - generic [ref=e103]: P
+                - text: bot_gpt_nano
+            - listitem [ref=e105]:
+              - generic [ref=e106]: R6 T6
+              - generic [ref=e107]:
+                - text: bot_ev_heuristic
+                - generic [ref=e109]: R
+              - generic [ref=e110]: "0"
+              - generic [ref=e111]: vs
+              - generic [ref=e112]: "+2"
+              - generic [ref=e113]:
+                - generic [ref=e114]: S
+                - text: bot_random_action
+            - listitem [ref=e116]:
+              - generic [ref=e117]: R6 T6
+              - generic [ref=e118]:
+                - text: bot_gpt_nano
+                - generic [ref=e120]: R
+              - generic [ref=e121]: "0"
+              - generic [ref=e122]: vs
+              - generic [ref=e123]: "+2"
+              - generic [ref=e124]:
+                - generic [ref=e125]: S
+                - text: bot_random_action
+            - listitem [ref=e127]:
+              - generic [ref=e128]: R6 T5
+              - generic [ref=e129]:
+                - text: bot_br_last
+                - generic [ref=e131]: R
+              - generic [ref=e132]: "+2"
+              - generic [ref=e133]: vs
+              - generic [ref=e134]: "+2"
+              - generic [ref=e135]:
+                - generic [ref=e136]: R
+                - text: bot_ev_heuristic
+            - listitem [ref=e138]:
+              - generic [ref=e139]: R6 T5
+              - generic [ref=e140]:
+                - text: bot_br_last
+                - generic [ref=e142]: R
+              - generic [ref=e143]: "+2"
+              - generic [ref=e144]: vs
+              - generic [ref=e145]: "+2"
+              - generic [ref=e146]:
+                - generic [ref=e147]: R
+                - text: bot_gpt_nano
+            - listitem [ref=e149]:
+              - generic [ref=e150]: R6 T5
+              - generic [ref=e151]:
+                - text: bot_br_last
+                - generic [ref=e153]: R
+              - generic [ref=e154]: "0"
+              - generic [ref=e155]: vs
+              - generic [ref=e156]: "+2"
+              - generic [ref=e157]:
+                - generic [ref=e158]: S
+                - text: bot_random_action
+            - listitem [ref=e160]:
+              - generic [ref=e161]: R6 T5
+              - generic [ref=e162]:
+                - text: bot_ev_heuristic
+                - generic [ref=e164]: R
+              - generic [ref=e165]: "+1"
+              - generic [ref=e166]: vs
+              - generic [ref=e167]: "-1"
+              - generic [ref=e168]:
+                - generic [ref=e169]: P
+                - text: bot_gpt_nano
+            - listitem [ref=e171]:
+              - generic [ref=e172]: R6 T5
+              - generic [ref=e173]:
+                - text: bot_ev_heuristic
+                - generic [ref=e175]: R
+              - generic [ref=e176]: "0"
+              - generic [ref=e177]: vs
+              - generic [ref=e178]: "+2"
+              - generic [ref=e179]:
+                - generic [ref=e180]: S
+                - text: bot_random_action
+            - listitem [ref=e182]:
+              - generic [ref=e183]: R6 T5
+              - generic [ref=e184]:
+                - text: bot_gpt_nano
+                - generic [ref=e186]: P
+              - generic [ref=e187]: "-3"
+              - generic [ref=e188]: vs
+              - generic [ref=e189]: "-1"
+              - generic [ref=e190]:
+                - generic [ref=e191]: S
+                - text: bot_random_action
+            - listitem [ref=e193]:
+              - generic [ref=e194]: R6 T4
+              - generic [ref=e195]:
+                - text: bot_br_last
+                - generic [ref=e197]: R
+              - generic [ref=e198]: "+2"
+              - generic [ref=e199]: vs
+              - generic [ref=e200]: "+2"
+              - generic [ref=e201]:
+                - generic [ref=e202]: R
+                - text: bot_ev_heuristic
+            - listitem [ref=e204]:
+              - generic [ref=e205]: R6 T4
+              - generic [ref=e206]:
+                - text: bot_br_last
+                - generic [ref=e208]: R
+              - generic [ref=e209]: "+2"
+              - generic [ref=e210]: vs
+              - generic [ref=e211]: "+2"
+              - generic [ref=e212]:
+                - generic [ref=e213]: R
+                - text: bot_gpt_nano
+            - listitem [ref=e215]:
+              - generic [ref=e216]: R6 T4
+              - generic [ref=e217]:
+                - text: bot_br_last
+                - generic [ref=e219]: R
+              - generic [ref=e220]: "+2"
+              - generic [ref=e221]: vs
+              - generic [ref=e222]: "+2"
+              - generic [ref=e223]:
+                - generic [ref=e224]: R
+                - text: bot_random_action
+            - listitem [ref=e226]:
+              - generic [ref=e227]: R6 T4
+              - generic [ref=e228]:
+                - text: bot_ev_heuristic
+                - generic [ref=e230]: R
+              - generic [ref=e231]: "+1"
+              - generic [ref=e232]: vs
+              - generic [ref=e233]: "-1"
+              - generic [ref=e234]:
+                - generic [ref=e235]: P
+                - text: bot_gpt_nano
+            - listitem [ref=e237]:
+              - generic [ref=e238]: R6 T4
+              - generic [ref=e239]:
+                - text: bot_ev_heuristic
+                - generic [ref=e241]: R
+              - generic [ref=e242]: "+1"
+              - generic [ref=e243]: vs
+              - generic [ref=e244]: "-1"
+              - generic [ref=e245]:
+                - generic [ref=e246]: P
+                - text: bot_random_action
+            - listitem [ref=e248]:
+              - generic [ref=e249]: R6 T4
+              - generic [ref=e250]:
+                - text: bot_gpt_nano
+                - generic [ref=e252]: P
+              - generic [ref=e253]: "-1"
+              - generic [ref=e254]: vs
+              - generic [ref=e255]: "+1"
+              - generic [ref=e256]:
+                - generic [ref=e257]: R
+                - text: bot_random_action
+            - listitem [ref=e259]:
+              - generic [ref=e260]: R6 T3
+              - generic [ref=e261]:
+                - text: bot_br_last
+                - generic [ref=e263]: R
+              - generic [ref=e264]: "+2"
+              - generic [ref=e265]: vs
+              - generic [ref=e266]: "+2"
+              - generic [ref=e267]:
+                - generic [ref=e268]: R
+                - text: bot_ev_heuristic
+            - listitem [ref=e270]:
+              - generic [ref=e271]: R6 T3
+              - generic [ref=e272]:
+                - text: bot_br_last
+                - generic [ref=e274]: R
+              - generic [ref=e275]: "+2"
+              - generic [ref=e276]: vs
+              - generic [ref=e277]: "+2"
+              - generic [ref=e278]:
+                - generic [ref=e279]: R
+                - text: bot_gpt_nano
+            - listitem [ref=e281]:
+              - generic [ref=e282]: R6 T3
+              - generic [ref=e283]:
+                - text: bot_br_last
+                - generic [ref=e285]: R
+              - generic [ref=e286]: "+1"
+              - generic [ref=e287]: vs
+              - generic [ref=e288]: "-1"
+              - generic [ref=e289]:
+                - generic [ref=e290]: P
+                - text: bot_random_action
+            - listitem [ref=e292]:
+              - generic [ref=e293]: R6 T3
+              - generic [ref=e294]:
+                - text: bot_ev_heuristic
+                - generic [ref=e296]: R
+              - generic [ref=e297]: "+2"
+              - generic [ref=e298]: vs
+              - generic [ref=e299]: "+2"
+              - generic [ref=e300]:
+                - generic [ref=e301]: R
+                - text: bot_gpt_nano
+            - listitem [ref=e303]:
+              - generic [ref=e304]: R6 T3
+              - generic [ref=e305]:
+                - text: bot_ev_heuristic
+                - generic [ref=e307]: S
+              - generic [ref=e308]: "-1"
+              - generic [ref=e309]: vs
+              - generic [ref=e310]: "-3"
+              - generic [ref=e311]:
+                - generic [ref=e312]: P
+                - text: bot_random_action
+            - listitem [ref=e314]:
+              - generic [ref=e315]: R6 T3
+              - generic [ref=e316]:
+                - text: bot_gpt_nano
+                - generic [ref=e318]: P
+              - generic [ref=e319]: "-3"
+              - generic [ref=e320]: vs
+              - generic [ref=e321]: "-3"
+              - generic [ref=e322]:
+                - generic [ref=e323]: P
+                - text: bot_random_action
+            - listitem [ref=e325]:
+              - generic [ref=e326]: R6 T2
+              - generic [ref=e327]:
+                - text: bot_br_last
+                - generic [ref=e329]: R
+              - generic [ref=e330]: "+2"
+              - generic [ref=e331]: vs
+              - generic [ref=e332]: "+2"
+              - generic [ref=e333]:
+                - generic [ref=e334]: R
+                - text: bot_ev_heuristic
+            - listitem [ref=e336]:
+              - generic [ref=e337]: R6 T2
+              - generic [ref=e338]:
+                - text: bot_br_last
+                - generic [ref=e340]: R
+              - generic [ref=e341]: "0"
+              - generic [ref=e342]: vs
+              - generic [ref=e343]: "+2"
+              - generic [ref=e344]:
+                - generic [ref=e345]: S
+                - text: bot_gpt_nano
+            - listitem [ref=e347]:
+              - generic [ref=e348]: R6 T2
+              - generic [ref=e349]:
+                - text: bot_br_last
+                - generic [ref=e351]: R
+              - generic [ref=e352]: "+1"
+              - generic [ref=e353]: vs
+              - generic [ref=e354]: "-1"
+              - generic [ref=e355]:
+                - generic [ref=e356]: P
+                - text: bot_random_action
+            - listitem [ref=e358]:
+              - generic [ref=e359]: R6 T2
+              - generic [ref=e360]:
+                - text: bot_ev_heuristic
+                - generic [ref=e362]: R
+              - generic [ref=e363]: "0"
+              - generic [ref=e364]: vs
+              - generic [ref=e365]: "+2"
+              - generic [ref=e366]:
+                - generic [ref=e367]: S
+                - text: bot_gpt_nano
+            - listitem [ref=e369]:
+              - generic [ref=e370]: R6 T2
+              - generic [ref=e371]:
+                - text: bot_ev_heuristic
+                - generic [ref=e373]: R
+              - generic [ref=e374]: "0"
+              - generic [ref=e375]: vs
+              - generic [ref=e376]: "+2"
+              - generic [ref=e377]:
+                - generic [ref=e378]: S
+                - text: bot_random_action
+            - listitem [ref=e380]:
+              - generic [ref=e381]: R6 T2
+              - generic [ref=e382]:
+                - text: bot_gpt_nano
+                - generic [ref=e384]: S
+              - generic [ref=e385]: "-1"
+              - generic [ref=e386]: vs
+              - generic [ref=e387]: "-3"
+              - generic [ref=e388]:
+                - generic [ref=e389]: P
+                - text: bot_random_action
+            - listitem [ref=e391]:
+              - generic [ref=e392]: R6 T1
+              - generic [ref=e393]:
+                - text: bot_br_last
+                - generic [ref=e395]: P
+              - generic [ref=e396]: "-3"
+              - generic [ref=e397]: vs
+              - generic [ref=e398]: "-3"
+              - generic [ref=e399]:
+                - generic [ref=e400]: P
+                - text: bot_ev_heuristic
+            - listitem [ref=e402]:
+              - generic [ref=e403]: R6 T1
+              - generic [ref=e404]:
+                - text: bot_br_last
+                - generic [ref=e406]: R
+              - generic [ref=e407]: "+2"
+              - generic [ref=e408]: vs
+              - generic [ref=e409]: "+2"
+              - generic [ref=e410]:
+                - generic [ref=e411]: R
+                - text: bot_gpt_nano
+            - listitem [ref=e413]:
+              - generic [ref=e414]: R6 T1
+              - generic [ref=e415]:
+                - text: bot_br_last
+                - generic [ref=e417]: S
+              - generic [ref=e418]: "-1"
+              - generic [ref=e419]: vs
+              - generic [ref=e420]: "-3"
+              - generic [ref=e421]:
+                - generic [ref=e422]: P
+                - text: bot_random_action
+            - listitem [ref=e424]:
+              - generic [ref=e425]: R6 T1
+              - generic [ref=e426]:
+                - text: bot_ev_heuristic
+                - generic [ref=e428]: R
+              - generic [ref=e429]: "+2"
+              - generic [ref=e430]: vs
+              - generic [ref=e431]: "+2"
+              - generic [ref=e432]:
+                - generic [ref=e433]: R
+                - text: bot_gpt_nano
+            - listitem [ref=e435]:
+              - generic [ref=e436]: R6 T1
+              - generic [ref=e437]:
+                - text: bot_ev_heuristic
+                - generic [ref=e439]: R
+              - generic [ref=e440]: "+1"
+              - generic [ref=e441]: vs
+              - generic [ref=e442]: "-1"
+              - generic [ref=e443]:
+                - generic [ref=e444]: P
+                - text: bot_random_action
+            - listitem [ref=e446]:
+              - generic [ref=e447]: R6 T1
+              - generic [ref=e448]:
+                - text: bot_gpt_nano
+                - generic [ref=e450]: P
+              - generic [ref=e451]: "-1"
+              - generic [ref=e452]: vs
+              - generic [ref=e453]: "+1"
+              - generic [ref=e454]:
+                - generic [ref=e455]: R
+                - text: bot_random_action
+        - generic [ref=e457]:
+          - generic [ref=e458]:
+            - heading "Betting market" [level=2] [ref=e459]
+            - generic [ref=e460]:
+              - generic [ref=e461]:
+                - generic [ref=e462]: "Round 7:"
+                - generic [ref=e463]: P>=S
+              - generic [ref=e464]:
+                - generic [ref=e465]: ✓ 1
+                - generic [ref=e466]: ✗ 1
+                - generic [ref=e467]: abs 2
+            - generic [ref=e468]:
+              - text: "R6:"
+              - code [ref=e469]: P>R
+              - text: → FALSE · R:42 P:18 S:12
+          - generic [ref=e470]:
+            - heading "News feed" [level=2] [ref=e471]
+            - list [ref=e472]:
+              - listitem [ref=e473]:
+                - generic [ref=e474]: R6
+                - generic [ref=e475]: bot_br_last rockets +44 in R5 to climb to +70, closing fast on leader bot_ev_heuristic at +115.
+              - listitem [ref=e476]:
+                - generic [ref=e477]: R5
+                - generic [ref=e478]: bot_br_last surges to second with +17 in R4, now +26 overall.
+              - listitem [ref=e479]:
+                - generic [ref=e480]: R4
+                - generic [ref=e481]: bot_ev_heuristic extends lead to +72 after R3 (+26), pulling further clear at the top.
+              - listitem [ref=e482]:
+                - generic [ref=e483]: R2
+                - generic [ref=e484]: bot_ev_heuristic rockets to the lead with +46 as R1 resolves (Paper 51); bot_br_last is knocked off the top.
+              - listitem [ref=e485]:
+                - generic [ref=e486]: R1
+                - generic [ref=e487]: "Round 1 opens: bot_br_last, bot_ev_heuristic, bot_gpt_nano, bot_random_action join; bet S>=* shows 2 agree, 1 disagree."
+              - listitem [ref=e488]:
+                - generic [ref=e489]: "Final: bot_ev_heuristic champ +361; bot_br_last runner-up +273; bot_random_action third +107; bot_gpt_nano fourth +68."
+          - generic [ref=e490]:
+            - heading "Round 7 — broadcasts (live)" [level=2] [ref=e491]
+            - generic [ref=e492]:
+              - generic [ref=e493]:
+                - generic [ref=e494]: bot_br_last
+                - generic [ref=e495]: "bot_br_last: I'll bet against the crowd this round."
+              - generic [ref=e496]:
+                - generic [ref=e497]: bot_random_action
+                - generic [ref=e498]: "bot_random_action: I will reward cooperation."
+              - generic [ref=e499]:
+                - generic [ref=e500]: bot_ev_heuristic
+                - generic [ref=e501]: "bot_ev_heuristic: Going heavy on rock today."
+    - generic [ref=e502]:
+      - generic [ref=e503]:
+        - heading "Leaderboard" [level=2] [ref=e504]
+        - table [ref=e506]:
+          - rowgroup [ref=e507]:
+            - row "# Team Pay Pot Bet Pen Total" [ref=e508]:
+              - columnheader "#" [ref=e509]
+              - columnheader "Team" [ref=e510]
+              - columnheader "Pay" [ref=e511]
+              - columnheader "Pot" [ref=e512]
+              - columnheader "Bet" [ref=e513]
+              - columnheader "Pen" [ref=e514]
+              - columnheader "Total" [ref=e515]
+          - rowgroup [ref=e516]:
+            - row "1 bot_ev_heuristic +105 +30 +7 0 +142" [ref=e517]:
+              - cell "1" [ref=e518]
+              - cell "bot_ev_heuristic" [ref=e519]: bot_ev_heuristic
+              - cell "+105" [ref=e521]
+              - cell "+30" [ref=e522]
+              - cell "+7" [ref=e523]
+              - cell "0" [ref=e524]
+              - cell "+142" [ref=e525]
+            - row "2 bot_br_last +72 +30 -8 0 +94" [ref=e526]:
+              - cell "2" [ref=e527]
+              - cell "bot_br_last" [ref=e528]: bot_br_last
+              - cell "+72" [ref=e530]
+              - cell "+30" [ref=e531]
+              - cell "-8" [ref=e532]
+              - cell "0" [ref=e533]
+              - cell "+94" [ref=e534]
+            - row "3 bot_gpt_nano -37 +30 -8 0 -15" [ref=e535]:
+              - cell "3" [ref=e536]
+              - cell "bot_gpt_nano" [ref=e537]: bot_gpt_nano
+              - cell "-37" [ref=e539]
+              - cell "+30" [ref=e540]
+              - cell "-8" [ref=e541]
+              - cell "0" [ref=e542]
+              - cell "-15" [ref=e543]
+            - row "4 bot_random_action -42 +30 -23 0 -35" [ref=e544]:
+              - cell "4" [ref=e545]
+              - cell "bot_random_action" [ref=e546]: bot_random_action
+              - cell "-42" [ref=e548]
+              - cell "+30" [ref=e549]
+              - cell "-23" [ref=e550]
+              - cell "0" [ref=e551]
+              - cell "-35" [ref=e552]
+      - generic [ref=e553]:
+        - heading "Score over rounds" [level=2] [ref=e554]
+        - generic [ref=e555]:
+          - img [ref=e556]:
+            - generic [ref=e557]: "157"
+            - generic [ref=e558]: "-66"
+            - generic [ref=e559]: "0"
+            - generic [ref=e560]: "1"
+            - generic [ref=e561]: "2"
+            - generic [ref=e562]: "3"
+            - generic [ref=e563]: "4"
+            - generic [ref=e564]: "5"
+            - generic [ref=e565]: "6"
+          - generic [ref=e574]:
+            - button "All" [ref=e575] [cursor=pointer]
+            - button "bot_br_last" [ref=e576] [cursor=pointer]: bot_br_last
+            - button "bot_ev_heuristic" [ref=e578] [cursor=pointer]: bot_ev_heuristic
+            - button "bot_gpt_nano" [ref=e580] [cursor=pointer]: bot_gpt_nano
+            - button "bot_random_action" [ref=e582] [cursor=pointer]: bot_random_action
+  - generic [ref=e584]:
+    - generic [ref=e585]: Polling /dashboard/snapshot every 500ms
+    - generic [ref=e586]: connected · 14:59:04

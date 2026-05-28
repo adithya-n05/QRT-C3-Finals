@@ -187,6 +187,60 @@ class BacktestTests(unittest.TestCase):
             self.assertIsInstance(result.simulated_bet_net, float)
             self.assertGreaterEqual(result.simulated_bet_attempts, 0)
 
+    def test_run_backtest_counts_skipped_rounds_when_strategy_abstains(self) -> None:
+        payload = {
+            "rounds": [
+                {
+                    "round_index": 7,
+                    "complete": True,
+                    "payoff_matrix": [[-3, -3, -3], [-2, -2, -2], [-1, -1, -1]],
+                    "bet_proposition": "R>=*",
+                    "joiners": ["team_me", "team_opp"],
+                    "matches": [
+                        {
+                            "match_id": "r7__team_me__team_opp",
+                            "team_a": "team_me",
+                            "team_b": "team_opp",
+                            "turns": [
+                                {
+                                    "turn_index": 1,
+                                    "action_a": 0,
+                                    "action_b": 1,
+                                    "payoff_a": -3,
+                                    "payoff_b": -3,
+                                    "penalty_a": 0,
+                                    "penalty_b": 0,
+                                    "missed_a": False,
+                                    "missed_b": False,
+                                }
+                            ],
+                        }
+                    ],
+                    "bets": [
+                        {"team_id": "team_me", "agree": True},
+                        {"team_id": "team_opp", "agree": True},
+                    ],
+                }
+            ]
+        }
+
+        class AbstainStrategy(BasicStrategy):
+            def should_join(self, state):  # type: ignore[override]
+                return False
+
+            def choose_actions(self, state):  # type: ignore[override]
+                return {"team_opp": 0}
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "logs.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            result = run_backtest(path, "team_me", strategy=AbstainStrategy())
+
+        self.assertEqual(result.rounds_evaluated, 1)
+        self.assertEqual(result.rounds_skipped, 1)
+        self.assertEqual(result.turns_evaluated, 0)
+        self.assertEqual(result.simulated_bet_attempts, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -18,6 +18,7 @@ STAKE = 15
 @dataclass
 class BacktestMetrics:
     rounds_evaluated: int = 0
+    rounds_skipped: int = 0
     turns_evaluated: int = 0
     action_matches: int = 0
     action_match_rate: float = 0.0
@@ -151,6 +152,30 @@ def evaluate_round_for_team(round_data: JsonObject, team_id: str, strategy: Basi
         return BacktestMetrics()
 
     metrics = BacktestMetrics(rounds_evaluated=1)
+    opt_in_state = {
+        "phase": "opt_in",
+        "round_index": int(round_data["round_index"]),
+        "payoff_matrix": matrix,
+        "bet_proposition": proposition,
+        "pot": round_data.get("pot", 5),
+        "matchups": [
+            {"opponent_id": _opponent_id(match, team_id)} for match in matches
+        ],
+    }
+
+    if not strategy.should_join(opt_in_state):
+        actual_payoff = 0.0
+        for match in matches:
+            for _turn_index, actual_action, opponent_action, missed, observed_penalty in _load_match_turns(match, team_id):
+                actual_payoff += _cell_value(matrix[actual_action][opponent_action]) + observed_penalty
+                metrics.total_actual_penalty += observed_penalty
+                if missed:
+                    metrics.misses_observed += 1
+        metrics.rounds_skipped = 1
+        metrics.total_actual_payoff = actual_payoff
+        metrics.payoff_delta_vs_actual = round(0.0 - actual_payoff, 3)
+        return metrics
+
     total_actions = 0
     action_matches = 0
     predicted_payoff = 0.0
@@ -211,14 +236,6 @@ def evaluate_round_for_team(round_data: JsonObject, team_id: str, strategy: Basi
             if predicted_counts[actual_action] < 0:
                 predicted_counts[actual_action] = 0
 
-        opt_in_state = {
-            "round_index": int(round_data["round_index"]),
-            "payoff_matrix": matrix,
-            "bet_proposition": proposition,
-            "matchups": [
-                {"opponent_id": _opponent_id(match, team_id)} for match in matches
-            ],
-        }
         agree = strategy.choose_bet(opt_in_state)
         if agree is not None:
             proposition_result = evaluate_proposition(
@@ -267,6 +284,7 @@ def run_backtest(logs_path: Path, team_id: str, strategy: BasicStrategy | None =
             continue
         round_metrics = evaluate_round_for_team(round_data, team_id, strategy)
         aggregate.rounds_evaluated += round_metrics.rounds_evaluated
+        aggregate.rounds_skipped += round_metrics.rounds_skipped
         aggregate.turns_evaluated += round_metrics.turns_evaluated
         aggregate.action_matches += round_metrics.action_matches
         aggregate.total_predicted_payoff += round_metrics.total_predicted_payoff

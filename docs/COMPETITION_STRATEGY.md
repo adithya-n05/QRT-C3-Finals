@@ -40,8 +40,9 @@ These observations came from public logs during the bot practice stage.
 
 ## Action Policy
 
-1. Join while the agent is healthy. Participation reward is material, and
-   missing opt-in is worse than a conservative join with complete actions.
+1. Join only when expected round value is non-negative. Participation reward is
+   material, but it can be overwhelmed by 6-12 turns against multiple opponents
+   on a badly negative matrix.
 2. Always submit one action per opponent. A missing entry creates avoidable
    random action and penalty risk.
 3. For known `bot_br_last`, use one-turn lookahead except on final turn:
@@ -77,7 +78,8 @@ Current harness behavior follows this policy in `BasicStrategy.choose_broadcast`
 Betting is high variance because the stake is 15 and settlement is parimutuel.
 
 - Bet only when the proposition aligns strongly with our aggregate action
-  forecast.
+  forecast. The harness now forecasts counts from our planned actions and the
+  predicted modal opponent actions when matchups are known.
 - Abstain when the matrix is close, masked, or likely human behavior dominates
   the action count.
 - Remember one-sided correct markets refund only; the upside comes from being
@@ -108,8 +110,8 @@ PYTHONPATH=src python -m c3_harness.runner --live
 - Persist `/logs` snapshots and compute per-team action models automatically.
 - Add a replay evaluator that scores candidate strategies against historical
   rounds.
-- Improve betting by forecasting full aggregate counts from all active players,
-  not only our best action.
+- Improve betting by expanding count forecasts from our local matchups to the
+  full active field when public logs reveal stable participant behavior.
 - Add a round-2 stage logger and runbook for quick iteration on proposition
   assumptions.
 

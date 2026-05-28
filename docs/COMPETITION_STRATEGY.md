@@ -110,3 +110,19 @@ PYTHONPATH=src python -m c3_harness.runner --live
   rounds.
 - Improve betting by forecasting full aggregate counts from all active players,
   not only our best action.
+- Add a round-2 stage logger and runbook for quick iteration on proposition
+  assumptions.
+
+## Round 2 Execution Anchors
+
+- `--log-market` is the default for stage-two experiments.
+- Replay all complete rounds before each strategy promotion.
+- Promotion criteria:
+  - positive counterfactual payoff delta vs existing policy,
+  - no collapse in action-match confidence across the first two turns,
+  - improved or neutral expected bet NPV under recorded market totals.
+
+See:
+
+- `src/c3_harness/backtest.py`
+- `src/c3_harness/telemetry.py`

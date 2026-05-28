@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from .config import HarnessConfig
+from .telemetry import MarketLogger
 
 
 JsonObject = dict[str, Any]
@@ -25,6 +26,7 @@ class C3HTTPError(RuntimeError):
 class C3Client:
     config: HarnessConfig
     timeout_seconds: float = 5.0
+    logger: MarketLogger | None = None
 
     def request(
         self,
@@ -34,6 +36,7 @@ class C3Client:
         body: JsonObject | None = None,
         auth: bool = True,
     ) -> JsonObject:
+        started_ms = time.time()
         url = f"{self.config.base_url}{path}"
         data = None
         headers = {"Accept": "application/json"}
@@ -50,9 +53,16 @@ class C3Client:
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 raw = response.read().decode("utf-8")
+                status = getattr(response, "status", 200)
         except HTTPError as exc:
             raw_error = exc.read().decode("utf-8")
+            status = exc.code
+            if self.logger:
+                self.logger.log_api_telemetry(path, method, status, (time.time() - started_ms) * 1000)
             raise C3HTTPError(exc.code, raw_error) from exc
+
+        if self.logger:
+            self.logger.log_api_telemetry(path, method, status, (time.time() - started_ms) * 1000)
 
         if not raw:
             return {}

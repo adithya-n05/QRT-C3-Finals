@@ -13,7 +13,7 @@ manual.
 3. Read [docs/AGENT_FIRST_HARNESS.md](docs/AGENT_FIRST_HARNESS.md) before
    changing repo organization, docs, or harness boundaries.
 4. For implementation work, start in `src/c3_harness/runner.py`, then follow
-   imports into `api.py`, `strategy.py`, and `betting.py`.
+   imports into `api.py`, `strategy.py`, `telemetry.py`, and `backtest.py`.
 
 ## Safety Rules
 
@@ -26,6 +26,7 @@ manual.
 - Treat the live rules at `https://c3.qwerty.technology/docs/rules` and
   `https://c3.qwerty.technology/docs/api` as the source of truth if local docs
   drift.
+- Stage-2 execution should keep `stage2_logs/` and never commit raw run artifacts.
 - Keep future instructions discoverable through docs instead of expanding this
   file into a large manual.
 
@@ -34,6 +35,7 @@ manual.
 ```bash
 PYTHONPATH=src python -m c3_harness.runner --once
 PYTHONPATH=src python -m c3_harness.runner --live
+./scripts/run_stage2_capture.sh
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
@@ -48,7 +50,15 @@ Optional configuration:
 ```bash
 export C3_BASE_URL="https://c3.qwerty.technology"
 export C3_POLL_INTERVAL_SECONDS="0.35"
+export C3_LOG_MARKET="1"
+export C3_LOG_ROOT="stage2_logs"
 ```
+
+Project conventions:
+
+- Source code: `src/`
+- Tests: `tests/` (stdlib `unittest`)
+- Temporary output: `stage2_logs/`, generated artifacts in `.gitignore`.
 
 ## Work Style
 

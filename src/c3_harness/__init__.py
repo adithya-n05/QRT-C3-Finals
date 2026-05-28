@@ -4,6 +4,8 @@ __all__ = [
     "api",
     "betting",
     "config",
+    "telemetry",
+    "backtest",
     "runner",
     "strategy",
 ]

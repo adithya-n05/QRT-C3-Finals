@@ -11,10 +11,12 @@ trace quickly.
    decide where new files belong.
 3. `docs/C3_GAME_PROTOCOL.md` - gameplay, API, scoring, and deadline rules.
 4. `docs/COMPETITION_STRATEGY.md` - current tactical read and live playbook.
-5. `docs/AGENT_FIRST_HARNESS.md` - why the repo is shaped this way and how to
-   keep it legible.
+5. `docs/AGENT_FIRST_HARNESS.md` - why the repo is shaped this way and how to keep it
+   legible.
 6. `src/c3_harness/runner.py` - runtime loop and phase dispatch.
-7. `tests/` - executable checks for protocol helpers and strategy behavior.
+7. `src/c3_harness/telemetry.py` - local market event logging and replay capture.
+8. `src/c3_harness/backtest.py` - historical replay and counterfactual scoring.
+9. `tests/` - executable checks for strategy and harness behavior.
 
 ## File Map
 
@@ -34,21 +36,28 @@ trace quickly.
 │       ├── __init__.py
 │       ├── __main__.py
 │       ├── api.py
+│       ├── backtest.py
 │       ├── betting.py
 │       ├── config.py
 │       ├── runner.py
-│       └── strategy.py
+│       ├── strategy.py
+│       └── telemetry.py
+├── stage2_logs/
+│   └── <run_id>/
+│       └── stage2_events.ndjson
 ├── tools/
 │   └── analyze_public_logs.py
 └── tests/
     ├── test_betting.py
-    └── test_strategy.py
+    ├── test_backtest.py
+    ├── test_strategy.py
+    └── test_telemetry.py
 ```
 
 ## Responsibilities
 
-- `AGENTS.md`: concise context injected for coding agents. Keep it short and
-  link deeper docs instead of embedding long explanations.
+- `AGENTS.md`: concise context injected for coding agents. Keep it short and link
+  deeper docs instead of embedding long explanations.
 - `README.md`: human quickstart and verification commands.
 - `.env.example`: non-secret environment variable template.
 - `pyproject.toml`: Python project metadata.
@@ -61,11 +70,16 @@ trace quickly.
 - `src/c3_harness/api.py`: HTTP client wrapper for the C3 API.
 - `src/c3_harness/betting.py`: parse and evaluate bet propositions.
 - `src/c3_harness/config.py`: environment/config loading.
+- `src/c3_harness/backtest.py`: replay and counterfactual scoring against logs.
+- `src/c3_harness/telemetry.py`: market capture and decision audit stream.
 - `src/c3_harness/runner.py`: polling loop and phase-specific submissions.
-- `src/c3_harness/strategy.py`: basic deterministic policy.
+- `src/c3_harness/strategy.py`: policy and signal generation.
 - `tools/analyze_public_logs.py`: read-only public log summarizer for opponent
-  modeling during practice.
-- `tests/`: standard-library `unittest` checks.
+  modeling.
+- `tests/test_backtest.py`: backtest replay checks for the new round-history evaluator.
+- `tests/test_betting.py`: betting parser and proposition checks.
+- `tests/test_strategy.py`: strategy policy checks.
+- `tests/test_telemetry.py`: logger event stream integrity checks.
 
 ## Where To Put New Work
 
@@ -74,7 +88,7 @@ trace quickly.
   then split by responsibility and update this map.
 - Add tests in `tests/` that mirror the module under test.
 - Add design notes or operational runbooks in `docs/`.
-- Put temporary local output under `output/` only when useful for inspection.
+- Keep temporary outputs in `stage2_logs/` and add to `.gitignore`.
 
 ## Model Instructions
 

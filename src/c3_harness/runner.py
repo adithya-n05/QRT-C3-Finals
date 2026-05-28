@@ -8,10 +8,20 @@ from typing import Any
 
 from .api import C3Client, C3HTTPError
 from .config import HarnessConfig
+from .telemetry import MarketLogger
 from .strategy import BasicStrategy
 
 
 JsonObject = dict[str, Any]
+
+
+def normalize_phase(raw_phase: Any) -> str:
+    if raw_phase is None:
+        return ""
+    normalized = str(raw_phase).strip().lower()
+    if normalized.startswith("round_"):
+        normalized = normalized.removeprefix("round_")
+    return normalized
 
 
 @dataclass
@@ -19,11 +29,14 @@ class HarnessRunner:
     client: C3Client
     strategy: BasicStrategy
     live: bool = False
+    logger: MarketLogger | None = None
     submitted_keys: set[tuple[Any, ...]] = field(default_factory=set)
 
     def step(self) -> JsonObject:
         state = self.client.state()
-        phase = state.get("phase")
+        if self.logger:
+            self.logger.log_state(state)
+        phase = normalize_phase(state.get("phase"))
 
         if phase == "opt_in":
             return self._handle_opt_in(state)
@@ -44,35 +57,53 @@ class HarnessRunner:
             payload["agree"] = agree
 
         if key in self.submitted_keys:
-            return {"operation": "participate", "skipped": "already handled locally"}
+            result = {"operation": "participate", "skipped": "already handled locally"}
+            if self.logger:
+                self.logger.log_decision("opt_in", payload=payload, response=result, state=state)
+            return result
 
         if not self.live:
             self.submitted_keys.add(key)
-            return {"operation": "participate", "dry_run": True, "payload": payload}
+            result = {"operation": "participate", "dry_run": True, "payload": payload}
+            if self.logger:
+                self.logger.log_decision("opt_in", payload=payload, response=result, state=state)
+            return result
 
         response = self.client.participate(round_index=round_index, join=join, agree=agree)
         if response.get("accepted"):
             self.submitted_keys.add(key)
-        return {"operation": "participate", "response": response, "payload": payload}
+        result = {"operation": "participate", "response": response, "payload": payload}
+        if self.logger:
+            self.logger.log_decision("opt_in", payload=payload, response=response, state=state)
+        return result
 
     def _handle_broadcast(self, state: JsonObject) -> JsonObject:
         round_index = int(state["round_index"])
         key = ("broadcast", round_index)
 
         if state.get("my_broadcast_submitted") or key in self.submitted_keys:
-            return {"operation": "broadcast", "skipped": "already submitted"}
+            result = {"operation": "broadcast", "skipped": "already submitted"}
+            if self.logger:
+                self.logger.log_decision("broadcast", payload={}, response=result, state=state)
+            return result
 
         message = self.strategy.choose_broadcast(state)
         payload = {"round_index": round_index, "message": message}
 
         if not self.live:
             self.submitted_keys.add(key)
-            return {"operation": "broadcast", "dry_run": True, "payload": payload}
+            result = {"operation": "broadcast", "dry_run": True, "payload": payload}
+            if self.logger:
+                self.logger.log_decision("broadcast", payload=payload, response=result, state=state)
+            return result
 
         response = self.client.broadcast(round_index=round_index, message=message)
         if response.get("accepted"):
             self.submitted_keys.add(key)
-        return {"operation": "broadcast", "response": response, "payload": payload}
+        result = {"operation": "broadcast", "response": response, "payload": payload}
+        if self.logger:
+            self.logger.log_decision("broadcast", payload=payload, response=response, state=state)
+        return result
 
     def _handle_action(self, state: JsonObject) -> JsonObject:
         round_index = int(state["round_index"])
@@ -80,7 +111,10 @@ class HarnessRunner:
         key = ("action", round_index, turn_index)
 
         if state.get("my_action_submitted") or key in self.submitted_keys:
-            return {"operation": "action", "skipped": "already submitted"}
+            result = {"operation": "action", "skipped": "already submitted"}
+            if self.logger:
+                self.logger.log_decision("action", payload={}, response=result, state=state)
+            return result
 
         actions = self.strategy.choose_actions(state)
         payload = {
@@ -91,7 +125,10 @@ class HarnessRunner:
 
         if not self.live:
             self.submitted_keys.add(key)
-            return {"operation": "action", "dry_run": True, "payload": payload}
+            result = {"operation": "action", "dry_run": True, "payload": payload}
+            if self.logger:
+                self.logger.log_decision("action", payload=payload, response=result, state=state)
+            return result
 
         response = self.client.action(
             round_index=round_index,
@@ -100,7 +137,10 @@ class HarnessRunner:
         )
         if response.get("accepted"):
             self.submitted_keys.add(key)
-        return {"operation": "action", "response": response, "payload": payload}
+        result = {"operation": "action", "response": response, "payload": payload}
+        if self.logger:
+            self.logger.log_decision("action", payload=payload, response=response, state=state)
+        return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -108,6 +148,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--live", action="store_true", help="submit live POSTs")
     parser.add_argument("--once", action="store_true", help="run one poll/decision step")
     parser.add_argument("--max-loops", type=int, default=None, help="stop after N loops")
+    parser.add_argument("--log-market", action="store_true", help="persist state and decision log")
     args = parser.parse_args(argv)
 
     config = HarnessConfig.from_env(live=args.live)
@@ -118,10 +159,17 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    logger = MarketLogger(
+        enabled=args.log_market or config.log_market,
+        log_root=config.log_root,
+        run_name=config.log_run_name,
+    ) if (args.log_market or config.log_market) else None
+
     runner = HarnessRunner(
-        client=C3Client(config),
+        client=C3Client(config, logger=logger),
         strategy=BasicStrategy(),
         live=config.live,
+        logger=logger,
     )
 
     loops = 0

@@ -14,6 +14,9 @@ class HarnessConfig:
     poll_interval_seconds: float = 0.35
     safety_margin_ms: int = 100
     live: bool = False
+    log_market: bool = False
+    log_root: str = "stage2_logs"
+    log_run_name: str | None = None
 
     @classmethod
     def from_env(cls, *, live: bool = False) -> "HarnessConfig":
@@ -23,6 +26,9 @@ class HarnessConfig:
             poll_interval_seconds=float(os.getenv("C3_POLL_INTERVAL_SECONDS", "0.35")),
             safety_margin_ms=int(os.getenv("C3_SAFETY_MARGIN_MS", "100")),
             live=live,
+            log_market=os.getenv("C3_LOG_MARKET", "0") not in {"0", "false", "False", "FALSE"},
+            log_root=os.getenv("C3_LOG_ROOT", "stage2_logs"),
+            log_run_name=os.getenv("C3_LOG_RUN_NAME"),
         )
 
     def auth_headers(self) -> dict[str, str]:

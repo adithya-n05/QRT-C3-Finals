@@ -33,6 +33,32 @@ PYTHONPATH=src python -m unittest discover -s tests
 python tools/analyze_public_logs.py
 ```
 
+## Logging and Round-2 Backtest
+
+Enable logging on live or dry-run runs:
+
+```bash
+PYTHONPATH=src C3_GAME_KEY=... python -m c3_harness.runner --live --log-market
+```
+
+### Round-2 capture (one command)
+
+```bash
+export C3_GAME_KEY="bagel-fancy-jade"
+./scripts/run_stage2_capture.sh
+```
+
+This starts a live polling loop immediately with market logging enabled and writes
+NDJSON into `stage2_logs/<run_id>/<run_name>_events.ndjson`.
+Use extra flags to control runtime (`--max-loops`, `--once`) and `C3_POLL_INTERVAL_SECONDS`
+for timing.
+
+Run local replay on completed rounds:
+
+```bash
+PYTHONPATH=src python -m c3_harness.backtest --logs /path/to/logs.json --team-id "<team_id>"
+```
+
 ## Documentation
 
 - [docs/REPOSITORY_STRUCTURE.md](docs/REPOSITORY_STRUCTURE.md): file map and

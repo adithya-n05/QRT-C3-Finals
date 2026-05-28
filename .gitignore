@@ -8,3 +8,4 @@ __pycache__/
 .coverage
 htmlcov/
 .playwright-cli/
+stage2_logs/

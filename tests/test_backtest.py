@@ -187,6 +187,52 @@ class BacktestTests(unittest.TestCase):
             self.assertIsInstance(result.simulated_bet_net, float)
             self.assertGreaterEqual(result.simulated_bet_attempts, 0)
 
+    def test_run_backtest_scores_skipped_negative_rounds(self) -> None:
+        payload = {
+            "rounds": [
+                {
+                    "round_index": 1,
+                    "complete": True,
+                    "pot": 5,
+                    "payoff_matrix": [[-3, -3, -3], [-2, -2, -2], [-1, -1, -1]],
+                    "bet_proposition": "R>P",
+                    "joiners": ["team_me", "team_opponent"],
+                    "bets": [],
+                    "matches": [
+                        {
+                            "match_id": "r1__team_me__team_opponent",
+                            "team_a": "team_me",
+                            "team_b": "team_opponent",
+                            "turns": [
+                                {
+                                    "turn_index": 1,
+                                    "action_a": 2,
+                                    "action_b": 0,
+                                    "payoff_a": -1,
+                                    "payoff_b": -3,
+                                    "penalty_a": 0,
+                                    "penalty_b": 0,
+                                    "missed_a": False,
+                                    "missed_b": False,
+                                },
+                            ],
+                        }
+                    ],
+                },
+            ]
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "logs.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+
+            result = run_backtest(path, "team_me")
+
+            self.assertEqual(result.rounds_skipped, 1)
+            self.assertEqual(result.turns_evaluated, 0)
+            self.assertEqual(result.total_predicted_payoff, 0.0)
+            self.assertEqual(result.payoff_delta_vs_actual, 1.0)
+
     def test_run_backtest_counts_skipped_rounds_when_strategy_abstains(self) -> None:
         payload = {
             "rounds": [

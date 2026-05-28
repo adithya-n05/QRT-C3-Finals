@@ -1,0 +1,217 @@
+# QRT.C3 Grand Final — Game Rules
+
+Your player competes in a repeated, multi-player, matrix-payoff variant of
+Rock-Paper-Scissors. Each team writes a program ("an agent") that talks to
+the game server over HTTP. Read these rules carefully — they describe what
+the server expects from your agent and how scoring works.
+
+## Tournament structure
+
+- A **game** is a sequence of rounds played against the same set of
+  opponents. The tournament runs until the wall-clock limit; you don't
+  know in advance exactly how many rounds you'll play.
+- Each round you may choose to **opt in** (play this round) or **sit out**.
+  Sit-outs miss the pair payoffs and the per-participant participation
+  payment. They also cannot place a bet on the round's **betting market**
+  (see below). Sit-outs still see the game state and can return next round.
+- Each round draws a fresh 3×3 integer payoff matrix. Every cell is
+  sampled **independently and uniformly** from `[-3, 3]`. Any matrix is
+  possible: constant rows, dominated actions, degenerate games,
+  all-positive or all-negative payoffs. Plan for the full space, not just
+  "nice" matrices.
+- The matrix is partially **masked** in later rounds; hidden cells appear
+  as `null` in your `payoff_matrix`. The average number of masked entries
+  grows as the round index increases, so later rounds typically reveal less
+  upfront. **A masked cell becomes public the first time any pair plays
+  it** ("reveal-on-play"); any remaining masks are revealed at round close.
+- All matches in a round run **in parallel**. If `K` teams opt into the
+  round, you are matched against every other joiner — `K − 1` simultaneous
+  pair matches sharing the same matrix.
+
+## Per-round phases
+
+| Phase | Tournament duration | What you can submit |
+| --- | --- | --- |
+| `ROUND_OPT_IN`     | 5 s    | `/participate` (with optional bet) |
+| `ROUND_BROADCAST`  | 10 s   | `/broadcast` |
+| `ROUND_THINKING`   | 15 s   | — (silent strategy window) |
+| `ROUND_PLAYING`    | 2 s per turn × 6–12 turns | `/action` |
+| `ROUND_COMPLETE`   | instant | — |
+| `ROUND_PAUSE`      | 5 s    | (no submissions; update your strategy between rounds) |
+
+The durations above are the values configured for the live tournament;
+the operator may retune them between stages. **Do not hard-code them.**
+Poll `/state` and read `*_deadline_unix_ms` against `server_now_unix_ms`
+to learn the real remaining time for the current phase. Each phase accepts
+only specific endpoints — submitting the wrong endpoint for the current
+phase returns an error.
+
+### Opt-in (`ROUND_OPT_IN`)
+
+The masked matrix, the per-participant participation reward, and the
+round's **bet proposition** are published. The proposition is a short
+parseable string like `"R>=*"` ("rock will be the modal action this
+round") — see [The betting market](#the-betting-market) for the full
+grammar and settlement rules. You decide whether to play this round and
+(optionally) whether to bet on the proposition by POSTing:
+
+```json
+POST /participate {
+  "round_index": <int>,
+  "join": true|false,
+  "agree": true|false        // optional; only meaningful when join=true
+}
+```
+
+- Every joiner is paid `PARTICIPATION_REWARD` (default `5`) at round close.
+- `agree: true` bets that the round's proposition will hold; `agree: false`
+  bets against. Each bettor stakes `BET_STAKE` (default `15`). Settlement
+  is at round close (see "The betting market" below). Omitting `agree` is
+  an abstention — you play normally without staking.
+- If you do not submit before the deadline you are treated as
+  `join: false` (and therefore cannot bet).
+- Choice is final once submitted.
+- Sit-outs receive no participation payment and **cannot bet**. They still
+  see the round via `/state` (`phase: "idle"`) and `/logs`.
+
+### Broadcast (`ROUND_BROADCAST`)
+
+Joiners send a single public message:
+
+```json
+POST /broadcast {
+  "round_index": <int>,
+  "message": "I will reward cooperation."
+}
+```
+
+- ≤ `280` chars. Longer payloads are rejected.
+- Broadcasts are **public**: every joiner sees every other joiner's
+  message during the round on the dashboard's live broadcast pane, and
+  they're posted to `/logs` at `ROUND_COMPLETE`. If you want to address a
+  specific opponent, name them in the text.
+- Non-binding cheap talk — you don't have to follow through on what you
+  say. But repeated lies leak via observable play and damage your
+  credibility.
+- Omitting `/broadcast` entirely is fine (empty message recorded).
+- First valid payload wins; further POSTs are rejected.
+
+### Thinking (`ROUND_THINKING`)
+
+A silent strategy window. `/broadcast` and `/action` are closed. Use this
+window to plan your action sequence for the upcoming turns, model opponents
+from broadcasts, etc. The window is a fixed wall-clock duration regardless
+of how fast others finished — you cannot shorten it.
+
+### Action turns (`ROUND_PLAYING`)
+
+Each turn you POST one payload with a per-opponent actions dict:
+
+```json
+POST /action {
+  "round_index": <int>,
+  "turn_index": <int>,
+  "actions": { "<opp_id>": 0|1|2, ... }
+}
+```
+
+- Different actions per opponent are allowed and often optimal — you can
+  cooperate with one and exploit another in the same turn.
+- A missing per-opponent entry → random action substituted + `-1`
+  penalty, **for that pair only**. Your other matchups are unaffected.
+- First valid payload wins; later POSTs for the same turn are rejected.
+- Turns are **round-synchronous**: turn `T+1` does not start until turn
+  `T` has resolved for every active pair.
+
+#### Stochastic stopping
+
+Each round runs between **6 and 12 turns** — the exact stopping turn is
+not fixed. The signal that the round is about to end is
+`next_turn_final: true` in `/state`: when you see that flag, the turn
+you're about to submit is the last one. Don't try to count turns
+yourself; rely on the flag.
+
+A `next_turn_final: true` turn is a real strategic moment — cooperative
+arrangements that relied on the shadow of the future tend to unravel
+here.
+
+### Round close (`ROUND_COMPLETE`)
+
+- Per-pair payoffs and penalties are summed into your total score.
+- Each joiner is paid `PARTICIPATION_REWARD` (flat, per-participant).
+- The **betting market** settles (winners share losers' stakes).
+- Any matrix cells that went unplayed during the round are revealed.
+- Broadcasts are released into `/logs`.
+
+## Payoff rule (symmetric perspective — important)
+
+If you play action `i` and an opponent plays `j`, your payoff is `A[i][j]`
+and their payoff is `A[j][i]`. Both players read the same matrix from
+their own perspective.
+
+The game is generally **non-zero-sum**: `A[i][j] + A[j][i]` need not be
+0. You can both win, both lose, or asymmetrically gain.
+
+**Common mistake to avoid:** do *not* assume the opponent's payoff is
+`-A[i][j]`. Compute it as `A[j][i]`.
+
+## The betting market
+
+At round setup the server publishes a single **bet proposition** — a claim
+about how this round's action submissions will tally. Joiners can agree
+or disagree with the claim by including `"agree": true|false` in their
+`/participate` payload. The proposition is exposed at `/state.bet_proposition`
+and on the dashboard.
+
+### Proposition grammar
+
+The proposition is a short, parseable string. Three forms:
+
+| Form | Meaning |
+| --- | --- |
+| `X>=*` | Action `X` has at least as many submissions as every other action this round (i.e. `X` is the modal action; ties OK). |
+| `X>Y`  | Strictly more `X` submissions than `Y` submissions. |
+| `X>=Y` | At-least-as-many `X` submissions as `Y` submissions. |
+
+`X` and `Y` are letters in `{R, P, S}`, mapping to actions `{0, 1, 2}`
+respectively. The full pool of 15 propositions:
+
+```
+R>=* P>=* S>=*           ← modal-action claims
+R>P  R>S  P>R  P>S  S>R  S>P    ← strict pairwise
+R>=P R>=S P>=R P>=S S>=R S>=P   ← weak pairwise
+```
+
+One proposition is drawn at round setup and exposed via `bet_proposition`.
+
+### Stake and settlement
+
+- Each bettor stakes `BET_STAKE` points (default `15`).
+- At round close, the server counts every action submission across every
+  pair and every turn in the round (including random substitutes for
+  missed actions). It evaluates the proposition against the per-action
+  totals and produces a TRUE/FALSE resolution.
+- Winners (bettors whose stance matches the truth value) get **their stake
+  back plus** an equal share of the losers' pooled stakes.
+- Losers (bettors on the wrong side) forfeit their stake.
+- **One-sided market — all winners:** every bettor agreed on the right side.
+  No loser pool to share — stakes are refunded (net delta = 0).
+- **One-sided market — all losers:** every bettor agreed on the wrong side.
+  There are no winners to pay, so the stakes forfeit to the house (sink).
+  Your net delta is `−BET_STAKE`.
+- **Abstention** (joined the round but omitted `agree`): no stake, no
+  payout. Neutral.
+
+## Scoring summary
+
+Your total score across the tournament is the sum of:
+
+- **Pay** — per-pair payoffs from resolved turns (`A[my_action][opp_action]`).
+- **Pot** — per-round `PARTICIPATION_REWARD` if you joined the round, else `0`.
+- **Bet** — net betting-market payouts (sum of `bet_payout` over all rounds;
+  +ve for a winning bet's share of the loser pool, −`BET_STAKE` for a
+  losing bet, `0` for abstentions or refunded one-sided markets).
+- **Pen** — penalties (`-1` per missed or invalid action, per affected pair).
+
+The leaderboard breaks total score into these four columns and ranks
+players by total.

@@ -1,0 +1,10 @@
+[project]
+name = "qrt-c3-agent-harness"
+version = "0.1.0"
+description = "Agent-first harness for the QRT.C3 Grand Final game server."
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.unittest]
+start-directory = "tests"
+

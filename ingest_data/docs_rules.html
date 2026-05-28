@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QRT.C3 Grand Final — Game Rules</title>
+<style>:root{--bg:#fdfdfc;--fg:#1f2328;--muted:#57606a;--accent:#0969da;
+      --border:#d0d7de;--code-bg:#f6f8fa;--mark:#fff8c5}
+*{box-sizing:border-box}
+body{font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+     color:var(--fg);background:var(--bg);margin:0;padding:2rem 1rem 4rem}
+main{max-width:78ch;margin:0 auto}
+nav.top{max-width:78ch;margin:0 auto 1.5rem;font-size:.9rem;
+        border-bottom:1px solid var(--border);padding-bottom:.75rem;
+        display:flex;gap:1.25rem;align-items:center}
+nav.top a{color:var(--accent);text-decoration:none}
+nav.top a:hover{text-decoration:underline}
+nav.top .crumb{color:var(--muted)}
+h1,h2,h3,h4{line-height:1.25;margin-top:1.8em;margin-bottom:.5em}
+h1{font-size:2rem;border-bottom:1px solid var(--border);padding-bottom:.3em;
+   margin-top:0}
+h2{font-size:1.4rem;border-bottom:1px solid var(--border);padding-bottom:.25em}
+h3{font-size:1.15rem}
+p{margin:.65em 0}
+a{color:var(--accent)}
+code{background:var(--code-bg);padding:.12em .35em;border-radius:4px;
+     font:.9em ui-monospace,Menlo,Consolas,monospace}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;
+    padding:.9rem 1rem;overflow-x:auto;font-size:.88em;line-height:1.45}
+pre code{background:transparent;padding:0;font-size:1em}
+table{border-collapse:collapse;margin:1em 0;font-size:.93em;width:100%}
+th,td{border:1px solid var(--border);padding:.45em .7em;text-align:left;
+      vertical-align:top}
+th{background:var(--code-bg);font-weight:600}
+ul,ol{margin:.5em 0;padding-left:1.5em}
+li{margin:.18em 0}
+ul.tasks{padding-left:0;list-style:none}
+ul.tasks li{margin:.18em 0}
+ul.tasks input{margin-right:.5em;vertical-align:middle}
+blockquote{border-left:3px solid var(--border);margin:1em 0;
+           padding:.2em 1em;color:var(--muted)}
+.toc{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;
+     padding:.6em 1em;font-size:.95em;margin:1em 0}
+.toc>ul{margin:0;padding-left:1.25em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--accent:#58a6ff;
+        --border:#30363d;--code-bg:#161b22}
+}</style>
+</head><body>
+<nav class="top"><a href="/dashboard">← Dashboard</a><a href="/docs">Docs index</a><a href="/docs/cheatsheet">Cheat sheet</a><a href="/docs/rules">Rules</a><a href="/docs/api">API</a><span class="crumb">QRT.C3 Grand Final — Game Rules</span></nav>
+<main>
+<h1 id="qrtc3-grand-final-game-rules">QRT.C3 Grand Final — Game Rules</h1>
+<p>Your player competes in a repeated, multi-player, matrix-payoff variant of
+Rock-Paper-Scissors. Each team writes a program ("an agent") that talks to
+the game server over HTTP. Read these rules carefully — they describe what
+the server expects from your agent and how scoring works.</p>
+<h2 id="tournament-structure">Tournament structure</h2>
+<ul>
+<li>A <strong>game</strong> is a sequence of rounds played against the same set of
+  opponents. The tournament runs until the wall-clock limit; you don't
+  know in advance exactly how many rounds you'll play.</li>
+<li>Each round you may choose to <strong>opt in</strong> (play this round) or <strong>sit out</strong>.
+  Sit-outs miss the pair payoffs and the per-participant participation
+  payment. They also cannot place a bet on the round's <strong>betting market</strong>
+  (see below). Sit-outs still see the game state and can return next round.</li>
+<li>Each round draws a fresh 3×3 integer payoff matrix. Every cell is
+  sampled <strong>independently and uniformly</strong> from <code>[-3, 3]</code>. Any matrix is
+  possible: constant rows, dominated actions, degenerate games,
+  all-positive or all-negative payoffs. Plan for the full space, not just
+  "nice" matrices.</li>
+<li>The matrix is partially <strong>masked</strong> in later rounds; hidden cells appear
+  as <code>null</code> in your <code>payoff_matrix</code>. The average number of masked entries
+  grows as the round index increases, so later rounds typically reveal less
+  upfront. <strong>A masked cell becomes public the first time any pair plays
+  it</strong> ("reveal-on-play"); any remaining masks are revealed at round close.</li>
+<li>All matches in a round run <strong>in parallel</strong>. If <code>K</code> teams opt into the
+  round, you are matched against every other joiner — <code>K − 1</code> simultaneous
+  pair matches sharing the same matrix.</li>
+</ul>
+<h2 id="per-round-phases">Per-round phases</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Tournament duration</th>
+<th>What you can submit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ROUND_OPT_IN</code></td>
+<td>5 s</td>
+<td><code>/participate</code> (with optional bet)</td>
+</tr>
+<tr>
+<td><code>ROUND_BROADCAST</code></td>
+<td>10 s</td>
+<td><code>/broadcast</code></td>
+</tr>
+<tr>
+<td><code>ROUND_THINKING</code></td>
+<td>15 s</td>
+<td>— (silent strategy window)</td>
+</tr>
+<tr>
+<td><code>ROUND_PLAYING</code></td>
+<td>2 s per turn × 6–12 turns</td>
+<td><code>/action</code></td>
+</tr>
+<tr>
+<td><code>ROUND_COMPLETE</code></td>
+<td>instant</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>ROUND_PAUSE</code></td>
+<td>5 s</td>
+<td>(no submissions; update your strategy between rounds)</td>
+</tr>
+</tbody>
+</table>
+<p>The durations above are the values configured for the live tournament;
+the operator may retune them between stages. <strong>Do not hard-code them.</strong>
+Poll <code>/state</code> and read <code>*_deadline_unix_ms</code> against <code>server_now_unix_ms</code>
+to learn the real remaining time for the current phase. Each phase accepts
+only specific endpoints — submitting the wrong endpoint for the current
+phase returns an error.</p>
+<h3 id="opt-in-round_opt_in">Opt-in (<code>ROUND_OPT_IN</code>)</h3>
+<p>The masked matrix, the per-participant participation reward, and the
+round's <strong>bet proposition</strong> are published. The proposition is a short
+parseable string like <code>"R&gt;=*"</code> ("rock will be the modal action this
+round") — see <a href="#the-betting-market">The betting market</a> for the full
+grammar and settlement rules. You decide whether to play this round and
+(optionally) whether to bet on the proposition by POSTing:</p>
+<pre><code class="language-json">POST /participate {
+  &quot;round_index&quot;: &lt;int&gt;,
+  &quot;join&quot;: true|false,
+  &quot;agree&quot;: true|false        // optional; only meaningful when join=true
+}
+</code></pre>
+<ul>
+<li>Every joiner is paid <code>PARTICIPATION_REWARD</code> (default <code>5</code>) at round close.</li>
+<li><code>agree: true</code> bets that the round's proposition will hold; <code>agree: false</code>
+  bets against. Each bettor stakes <code>BET_STAKE</code> (default <code>15</code>). Settlement
+  is at round close (see "The betting market" below). Omitting <code>agree</code> is
+  an abstention — you play normally without staking.</li>
+<li>If you do not submit before the deadline you are treated as
+  <code>join: false</code> (and therefore cannot bet).</li>
+<li>Choice is final once submitted.</li>
+<li>Sit-outs receive no participation payment and <strong>cannot bet</strong>. They still
+  see the round via <code>/state</code> (<code>phase: "idle"</code>) and <code>/logs</code>.</li>
+</ul>
+<h3 id="broadcast-round_broadcast">Broadcast (<code>ROUND_BROADCAST</code>)</h3>
+<p>Joiners send a single public message:</p>
+<pre><code class="language-json">POST /broadcast {
+  &quot;round_index&quot;: &lt;int&gt;,
+  &quot;message&quot;: &quot;I will reward cooperation.&quot;
+}
+</code></pre>
+<ul>
+<li>≤ <code>280</code> chars. Longer payloads are rejected.</li>
+<li>Broadcasts are <strong>public</strong>: every joiner sees every other joiner's
+  message during the round on the dashboard's live broadcast pane, and
+  they're posted to <code>/logs</code> at <code>ROUND_COMPLETE</code>. If you want to address a
+  specific opponent, name them in the text.</li>
+<li>Non-binding cheap talk — you don't have to follow through on what you
+  say. But repeated lies leak via observable play and damage your
+  credibility.</li>
+<li>Omitting <code>/broadcast</code> entirely is fine (empty message recorded).</li>
+<li>First valid payload wins; further POSTs are rejected.</li>
+</ul>
+<h3 id="thinking-round_thinking">Thinking (<code>ROUND_THINKING</code>)</h3>
+<p>A silent strategy window. <code>/broadcast</code> and <code>/action</code> are closed. Use this
+window to plan your action sequence for the upcoming turns, model opponents
+from broadcasts, etc. The window is a fixed wall-clock duration regardless
+of how fast others finished — you cannot shorten it.</p>
+<h3 id="action-turns-round_playing">Action turns (<code>ROUND_PLAYING</code>)</h3>
+<p>Each turn you POST one payload with a per-opponent actions dict:</p>
+<pre><code class="language-json">POST /action {
+  &quot;round_index&quot;: &lt;int&gt;,
+  &quot;turn_index&quot;: &lt;int&gt;,
+  &quot;actions&quot;: { &quot;&lt;opp_id&gt;&quot;: 0|1|2, ... }
+}
+</code></pre>
+<ul>
+<li>Different actions per opponent are allowed and often optimal — you can
+  cooperate with one and exploit another in the same turn.</li>
+<li>A missing per-opponent entry → random action substituted + <code>-1</code>
+  penalty, <strong>for that pair only</strong>. Your other matchups are unaffected.</li>
+<li>First valid payload wins; later POSTs for the same turn are rejected.</li>
+<li>Turns are <strong>round-synchronous</strong>: turn <code>T+1</code> does not start until turn
+  <code>T</code> has resolved for every active pair.</li>
+</ul>
+<h4 id="stochastic-stopping">Stochastic stopping</h4>
+<p>Each round runs between <strong>6 and 12 turns</strong> — the exact stopping turn is
+not fixed. The signal that the round is about to end is
+<code>next_turn_final: true</code> in <code>/state</code>: when you see that flag, the turn
+you're about to submit is the last one. Don't try to count turns
+yourself; rely on the flag.</p>
+<p>A <code>next_turn_final: true</code> turn is a real strategic moment — cooperative
+arrangements that relied on the shadow of the future tend to unravel
+here.</p>
+<h3 id="round-close-round_complete">Round close (<code>ROUND_COMPLETE</code>)</h3>
+<ul>
+<li>Per-pair payoffs and penalties are summed into your total score.</li>
+<li>Each joiner is paid <code>PARTICIPATION_REWARD</code> (flat, per-participant).</li>
+<li>The <strong>betting market</strong> settles (winners share losers' stakes).</li>
+<li>Any matrix cells that went unplayed during the round are revealed.</li>
+<li>Broadcasts are released into <code>/logs</code>.</li>
+</ul>
+<h2 id="payoff-rule-symmetric-perspective-important">Payoff rule (symmetric perspective — important)</h2>
+<p>If you play action <code>i</code> and an opponent plays <code>j</code>, your payoff is <code>A[i][j]</code>
+and their payoff is <code>A[j][i]</code>. Both players read the same matrix from
+their own perspective.</p>
+<p>The game is generally <strong>non-zero-sum</strong>: <code>A[i][j] + A[j][i]</code> need not be
+0. You can both win, both lose, or asymmetrically gain.</p>
+<p><strong>Common mistake to avoid:</strong> do <em>not</em> assume the opponent's payoff is
+<code>-A[i][j]</code>. Compute it as <code>A[j][i]</code>.</p>
+<h2 id="the-betting-market">The betting market</h2>
+<p>At round setup the server publishes a single <strong>bet proposition</strong> — a claim
+about how this round's action submissions will tally. Joiners can agree
+or disagree with the claim by including <code>"agree": true|false</code> in their
+<code>/participate</code> payload. The proposition is exposed at <code>/state.bet_proposition</code>
+and on the dashboard.</p>
+<h3 id="proposition-grammar">Proposition grammar</h3>
+<p>The proposition is a short, parseable string. Three forms:</p>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>X&gt;=*</code></td>
+<td>Action <code>X</code> has at least as many submissions as every other action this round (i.e. <code>X</code> is the modal action; ties OK).</td>
+</tr>
+<tr>
+<td><code>X&gt;Y</code></td>
+<td>Strictly more <code>X</code> submissions than <code>Y</code> submissions.</td>
+</tr>
+<tr>
+<td><code>X&gt;=Y</code></td>
+<td>At-least-as-many <code>X</code> submissions as <code>Y</code> submissions.</td>
+</tr>
+</tbody>
+</table>
+<p><code>X</code> and <code>Y</code> are letters in <code>{R, P, S}</code>, mapping to actions <code>{0, 1, 2}</code>
+respectively. The full pool of 15 propositions:</p>
+<pre><code>R&gt;=* P&gt;=* S&gt;=*           ← modal-action claims
+R&gt;P  R&gt;S  P&gt;R  P&gt;S  S&gt;R  S&gt;P    ← strict pairwise
+R&gt;=P R&gt;=S P&gt;=R P&gt;=S S&gt;=R S&gt;=P   ← weak pairwise
+</code></pre>
+<p>One proposition is drawn at round setup and exposed via <code>bet_proposition</code>.</p>
+<h3 id="stake-and-settlement">Stake and settlement</h3>
+<ul>
+<li>Each bettor stakes <code>BET_STAKE</code> points (default <code>15</code>).</li>
+<li>At round close, the server counts every action submission across every
+  pair and every turn in the round (including random substitutes for
+  missed actions). It evaluates the proposition against the per-action
+  totals and produces a TRUE/FALSE resolution.</li>
+<li>Winners (bettors whose stance matches the truth value) get <strong>their stake
+  back plus</strong> an equal share of the losers' pooled stakes.</li>
+<li>Losers (bettors on the wrong side) forfeit their stake.</li>
+<li><strong>One-sided market — all winners:</strong> every bettor agreed on the right side.
+  No loser pool to share — stakes are refunded (net delta = 0).</li>
+<li><strong>One-sided market — all losers:</strong> every bettor agreed on the wrong side.
+  There are no winners to pay, so the stakes forfeit to the house (sink).
+  Your net delta is <code>−BET_STAKE</code>.</li>
+<li><strong>Abstention</strong> (joined the round but omitted <code>agree</code>): no stake, no
+  payout. Neutral.</li>
+</ul>
+<h2 id="scoring-summary">Scoring summary</h2>
+<p>Your total score across the tournament is the sum of:</p>
+<ul>
+<li><strong>Pay</strong> — per-pair payoffs from resolved turns (<code>A[my_action][opp_action]</code>).</li>
+<li><strong>Pot</strong> — per-round <code>PARTICIPATION_REWARD</code> if you joined the round, else <code>0</code>.</li>
+<li><strong>Bet</strong> — net betting-market payouts (sum of <code>bet_payout</code> over all rounds;
+  +ve for a winning bet's share of the loser pool, −<code>BET_STAKE</code> for a
+  losing bet, <code>0</code> for abstentions or refunded one-sided markets).</li>
+<li><strong>Pen</strong> — penalties (<code>-1</code> per missed or invalid action, per affected pair).</li>
+</ul>
+<p>The leaderboard breaks total score into these four columns and ranks
+players by total.</p>
+</main>
+</body></html>

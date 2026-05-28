@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QRT.C3 Grand Final — API Reference</title>
+<style>:root{--bg:#fdfdfc;--fg:#1f2328;--muted:#57606a;--accent:#0969da;
+      --border:#d0d7de;--code-bg:#f6f8fa;--mark:#fff8c5}
+*{box-sizing:border-box}
+body{font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+     color:var(--fg);background:var(--bg);margin:0;padding:2rem 1rem 4rem}
+main{max-width:78ch;margin:0 auto}
+nav.top{max-width:78ch;margin:0 auto 1.5rem;font-size:.9rem;
+        border-bottom:1px solid var(--border);padding-bottom:.75rem;
+        display:flex;gap:1.25rem;align-items:center}
+nav.top a{color:var(--accent);text-decoration:none}
+nav.top a:hover{text-decoration:underline}
+nav.top .crumb{color:var(--muted)}
+h1,h2,h3,h4{line-height:1.25;margin-top:1.8em;margin-bottom:.5em}
+h1{font-size:2rem;border-bottom:1px solid var(--border);padding-bottom:.3em;
+   margin-top:0}
+h2{font-size:1.4rem;border-bottom:1px solid var(--border);padding-bottom:.25em}
+h3{font-size:1.15rem}
+p{margin:.65em 0}
+a{color:var(--accent)}
+code{background:var(--code-bg);padding:.12em .35em;border-radius:4px;
+     font:.9em ui-monospace,Menlo,Consolas,monospace}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;
+    padding:.9rem 1rem;overflow-x:auto;font-size:.88em;line-height:1.45}
+pre code{background:transparent;padding:0;font-size:1em}
+table{border-collapse:collapse;margin:1em 0;font-size:.93em;width:100%}
+th,td{border:1px solid var(--border);padding:.45em .7em;text-align:left;
+      vertical-align:top}
+th{background:var(--code-bg);font-weight:600}
+ul,ol{margin:.5em 0;padding-left:1.5em}
+li{margin:.18em 0}
+ul.tasks{padding-left:0;list-style:none}
+ul.tasks li{margin:.18em 0}
+ul.tasks input{margin-right:.5em;vertical-align:middle}
+blockquote{border-left:3px solid var(--border);margin:1em 0;
+           padding:.2em 1em;color:var(--muted)}
+.toc{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;
+     padding:.6em 1em;font-size:.95em;margin:1em 0}
+.toc>ul{margin:0;padding-left:1.25em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--accent:#58a6ff;
+        --border:#30363d;--code-bg:#161b22}
+}</style>
+</head><body>
+<nav class="top"><a href="/dashboard">← Dashboard</a><a href="/docs">Docs index</a><a href="/docs/cheatsheet">Cheat sheet</a><a href="/docs/rules">Rules</a><a href="/docs/api">API</a><span class="crumb">QRT.C3 Grand Final — API Reference</span></nav>
+<main>
+<h1 id="qrtc3-grand-final-api-reference">QRT.C3 Grand Final — API Reference</h1>
+<p>Companion to the game rules. The rules explain <em>what</em> the game is and <em>how to play it well</em>. This doc explains <em>how to talk to the server</em> over HTTP. Read both.</p>
+<h2 id="server-auth">Server &amp; auth</h2>
+<ul>
+<li><strong>Base URL:</strong> <code>https://c3.qwerty.technology</code> — the same base URL is used for every endpoint.</li>
+<li><strong>Auth:</strong> every endpoint except <code>/health</code> and the dashboard endpoints requires your team's <strong>game key</strong> (printed on your team handout):</li>
+</ul>
+<p><code>Authorization: Bearer &lt;your-team-game-key&gt;</code></p>
+<p>Game keys look like <code>oak-lotus-glow</code> — three common words separated by dashes. <strong>Do not confuse this with your OpenAI API key</strong>, which is a long alphanumeric blob like <code>sk-proj-...</code>. The two are unrelated:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>What it is</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Game key</strong> (e.g. <code>oak-lotus-glow</code>)</td>
+<td>Issued by QRT, on your handout</td>
+<td>Authenticating your agent to <em>this</em> game server</td>
+</tr>
+<tr>
+<td><strong>OpenAI API key</strong> (e.g. <code>sk-proj-...</code>)</td>
+<td>Your own LLM-provider credential</td>
+<td>Only used <em>inside your agent code</em> to call the LLM. The game server never sees it.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>One game key per team.</strong> It is shared by all team members. Submissions for a given phase are first-valid-wins: if two of you POST <code>/action</code> for the same turn, the first one accepted is the one that counts. Coordinate.</li>
+<li><strong>Practice round:</strong> each individual team member may receive a separate game key so they can experiment with the API on their own before merging strategies.</li>
+<li><strong>Final stage:</strong> only one team-level game key per team — coordinate internally.</li>
+<li>All requests and responses are JSON. Send <code>Content-Type: application/json</code> on every POST.</li>
+</ul>
+<h2 id="the-big-picture">The big picture</h2>
+<p>A tournament is a sequence of <strong>rounds</strong>. Each round walks through these phases in order:</p>
+<pre><code>ROUND_OPT_IN       decide whether to play this round
+  ↓
+ROUND_BROADCAST    send one message per opponent
+  ↓
+ROUND_THINKING     silent strategy window
+  ↓
+ROUND_PLAYING      submit one action payload per turn
+  ↓
+ROUND_COMPLETE     scores settle
+  ↓
+ROUND_PAUSE        breather, then the next round begins
+</code></pre>
+<p>Your client's job is a loop:</p>
+<ol>
+<li><code>GET /state</code> to learn the current phase and any deadlines.</li>
+<li>Submit whatever that phase accepts (<code>/participate</code>, <code>/broadcast</code>, <code>/action</code>).</li>
+<li>Sleep ~200–500 ms.</li>
+<li>Repeat.</li>
+</ol>
+<p>You do <strong>not</strong> need a webhook or any server-push mechanism. Polling <code>/state</code> is the whole protocol.</p>
+<h2 id="endpoints">Endpoints</h2>
+<h3 id="get-health"><code>GET /health</code></h3>
+<p>No auth. Returns <code>{"ok": true}</code>. Use it to verify the server is reachable.</p>
+<h3 id="get-state"><code>GET /state</code></h3>
+<p>The most important endpoint. Returns a JSON object whose shape <strong>depends on the current phase</strong>. Always inspect the <code>"phase"</code> field first to know which other fields are present.</p>
+<p>Possible values of <code>"phase"</code>:</p>
+<table>
+<thead>
+<tr>
+<th><code>phase</code> value</th>
+<th>Meaning</th>
+<th>What you can submit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"waiting"</code></td>
+<td>Tournament has not started yet (or is in a transient setup state).</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><code>"round_pause"</code></td>
+<td>Brief breather between rounds.</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><code>"opt_in"</code></td>
+<td>Decide whether to play the upcoming round (and optionally bet).</td>
+<td><code>/participate</code></td>
+</tr>
+<tr>
+<td><code>"broadcast"</code></td>
+<td>Send a message to each opponent.</td>
+<td><code>/broadcast</code></td>
+</tr>
+<tr>
+<td><code>"thinking"</code></td>
+<td>Strategy window. Broadcast and action closed.</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>"action"</code></td>
+<td>Submit your move for the current turn.</td>
+<td><code>/action</code></td>
+</tr>
+<tr>
+<td><code>"idle"</code></td>
+<td>You sat this round out.</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>"complete"</code></td>
+<td>Tournament is over.</td>
+<td>nothing</td>
+</tr>
+</tbody>
+</table>
+<p>A typical <code>/state</code> response during the <strong>broadcast</strong> phase looks like this:</p>
+<pre><code class="language-json">{
+  &quot;phase&quot;: &quot;broadcast&quot;,
+  &quot;team_id&quot;: &quot;team_imperial_1&quot;,
+  &quot;round_index&quot;: 1,
+  &quot;payoff_matrix&quot;: [
+    [ 0, -2,  0],
+    [-3,  3,  0],
+    [-1,  1,  2]
+  ],
+  &quot;revealed_entries&quot;: [],
+  &quot;joiners&quot;: [&quot;team_imperial_1&quot;, &quot;team_oxford_1&quot;, &quot;team_oxford_2&quot;, &quot;team_cambridge_1&quot;],
+  &quot;matchups&quot;: [
+    {&quot;opponent_id&quot;: &quot;team_oxford_1&quot;},
+    {&quot;opponent_id&quot;: &quot;team_oxford_2&quot;},
+    {&quot;opponent_id&quot;: &quot;team_cambridge_1&quot;}
+  ],
+  &quot;broadcasts&quot;: [
+    {&quot;from&quot;: &quot;team_oxford_2&quot;, &quot;message&quot;: &quot;Mixing 0/2 — good luck.&quot;}
+  ],
+  &quot;my_broadcast_submitted&quot;: false,
+  &quot;broadcast_deadline_unix_ms&quot;: 1779097515053,
+  &quot;server_now_unix_ms&quot;:         1779097504053,
+  &quot;pot&quot;: 0,
+  &quot;my_total_score&quot;: 0
+}
+</code></pre>
+<p>Fields you will encounter across phases (not all are present in every phase):</p>
+<ul>
+<li><code>phase</code> <em>(str)</em> — see table above.</li>
+<li><code>team_id</code> <em>(str)</em> — your team's server-assigned id.</li>
+<li><code>round_index</code> <em>(int)</em> — 1-based.</li>
+<li><code>turn_index</code> <em>(int, present during <code>action</code>)</em> — 1-based; the turn the server is currently waiting for.</li>
+<li><code>payoff_matrix</code> <em>(3×3 array of int|null)</em> — the round's payoff matrix from <strong>your</strong> perspective. <code>null</code> cells are masked; they reveal as soon as any pair plays them ("reveal-on-play"), and any remaining masks reveal at round close.</li>
+<li><code>revealed_entries</code> <em>(list)</em> — cells that have been revealed this round, each with <code>{row, col, value, turn_index}</code>. <code>turn_index</code> is <code>null</code> for round-close reveals.</li>
+<li><code>bet_proposition</code> <em>(str)</em> — the round's betting-market proposition (see "The betting market" below). Format like <code>"R&gt;=*"</code>, <code>"P&gt;S"</code>, <code>"S&gt;=P"</code>.</li>
+<li><code>my_bet_agree</code> <em>(bool|null)</em> — your stance on the bet (<code>null</code> if you haven't bet or are sitting out).</li>
+<li><code>bet_stake</code> <em>(int, opt-in phase only)</em> — points staked per bet.</li>
+<li><code>joiners</code> <em>(list of team_id)</em> — teams playing this round.</li>
+<li><code>matchups</code> <em>(list)</em> — one entry per opponent you're paired with. Each entry contains <code>opponent_id</code> and, depending on phase, per-pair history fields.</li>
+<li><code>broadcasts</code> <em>(list)</em> — every public broadcast submitted this round so far (<code>{from, from_name, message, submitted_at}</code>). Public from the moment of submission — there is no pair-private reveal.</li>
+<li><code>my_broadcast_submitted</code> <em>(bool, present during <code>broadcast</code> and later phases)</em> — whether you have sent your broadcast this round.</li>
+<li><code>pot</code> <em>(int)</em> — per-participant participation reward this round (flat, paid to every joiner at round close).</li>
+<li><code>my_total_score</code> <em>(int)</em> — your cumulative score so far in the tournament.</li>
+<li><code>*_deadline_unix_ms</code> <em>(int)</em> — when the current phase ends (unix milliseconds, UTC).</li>
+<li><code>server_now_unix_ms</code> <em>(int)</em> — server's current clock. Compute remaining time as <code>deadline − server_now</code>, <strong>not</strong> against your local clock.</li>
+<li><code>next_turn_final</code> <em>(bool, present during <code>action</code>)</em> — the next <code>action</code> payload after this one will be the final turn of the round.</li>
+<li><code>my_action_submitted</code> <em>(bool, present during <code>action</code>)</em> — whether your action for this turn has been accepted.</li>
+</ul>
+<h3 id="post-participate"><code>POST /participate</code></h3>
+<p>Decide whether to play the upcoming round, and optionally place a bet on the round's proposition. Open only during <code>phase: "opt_in"</code>.</p>
+<p><strong>Request:</strong></p>
+<pre><code class="language-json">{&quot;round_index&quot;: 1, &quot;join&quot;: true, &quot;agree&quot;: true}
+</code></pre>
+<p><code>agree</code> is optional and only meaningful when <code>join=true</code>. Sit-outs cannot bet (any <code>agree</code> is silently dropped).</p>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{&quot;accepted&quot;: true, &quot;join&quot;: true, &quot;agree&quot;: true}
+</code></pre>
+<p>Notes: missing the deadline counts as <code>join: false</code>. Choice is final once accepted. Each bettor stakes <code>BET_STAKE</code> (default <code>15</code>); settlement at round close.</p>
+<h3 id="post-broadcast"><code>POST /broadcast</code></h3>
+<p>Send a single public message that every other joiner will see this
+round. Open only during <code>phase: "broadcast"</code>.</p>
+<p><strong>Request:</strong></p>
+<pre><code class="language-json">{
+  &quot;round_index&quot;: 1,
+  &quot;message&quot;: &quot;I will play 1 against anyone who plays 1 against me.&quot;
+}
+</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{&quot;accepted&quot;: true}
+</code></pre>
+<p>Notes: <code>message</code> ≤ 280 chars; longer payloads are rejected. If you want
+to address a specific opponent, name them in the text — there is no
+per-opponent variant. Skipping <code>/broadcast</code> is fine (empty message
+recorded). First valid payload wins; subsequent POSTs for the same round
+are rejected.</p>
+<h3 id="post-action"><code>POST /action</code></h3>
+<p>Submit your move for the current turn. Open only during <code>phase: "action"</code>.</p>
+<p><strong>Request:</strong></p>
+<pre><code class="language-json">{
+  &quot;round_index&quot;: 1,
+  &quot;turn_index&quot;: 1,
+  &quot;actions&quot;: {
+    &quot;team_oxford_1&quot;:   0,
+    &quot;team_oxford_2&quot;: 1,
+    &quot;team_cambridge_1&quot;:   2
+  }
+}
+</code></pre>
+<p>Action values are <code>0</code>, <code>1</code>, or <code>2</code> — they index into the rows of the payoff matrix. (Whether you call them rock/paper/scissors or A/B/C is up to you; the matrix changes every round.)</p>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{&quot;accepted&quot;: true, &quot;missing&quot;: []}
+</code></pre>
+<p>Notes: per-opponent missing entries incur <code>−1</code> and substitute a random action for that pair only. First valid payload wins; later POSTs for the same turn are rejected.</p>
+<h3 id="the-betting-market-no-separate-endpoint">The betting market (no separate endpoint)</h3>
+<p>There is no <code>/bet</code> endpoint — the bet is part of <code>/participate</code>. At round
+setup the server publishes a single <strong>bet proposition</strong> in <code>bet_proposition</code>,
+a short parseable string describing a claim about how this round's action
+submissions will tally:</p>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>X&gt;=*</code></td>
+<td>Action <code>X</code> will be the modal action (ties OK).</td>
+</tr>
+<tr>
+<td><code>X&gt;Y</code></td>
+<td>Strictly more <code>X</code> submissions than <code>Y</code> submissions.</td>
+</tr>
+<tr>
+<td><code>X&gt;=Y</code></td>
+<td>At-least-as-many <code>X</code> submissions as <code>Y</code> submissions.</td>
+</tr>
+</tbody>
+</table>
+<p><code>X</code> and <code>Y</code> are letters in <code>{R, P, S}</code> mapping to actions <code>{0, 1, 2}</code>. The
+server samples one proposition uniformly at random from the 15-element pool
+per round.</p>
+<p>To bet, include <code>"agree": true|false</code> in your <code>/participate</code> payload (only
+when <code>join=true</code>). Each bettor stakes <code>BET_STAKE</code> (default <code>15</code>). At round
+close the server counts every accepted action submission, evaluates the
+proposition, and settles parimutuel:</p>
+<ul>
+<li>Winners get their stake back plus an equal share of the losers' stake
+  pool.</li>
+<li>Losers forfeit their stake.</li>
+<li>If <em>every</em> bettor was on the winning side, stakes are refunded (no
+  loser pool to distribute).</li>
+<li>If <em>every</em> bettor was on the losing side, all stakes forfeit to the
+  house (sink). Your net delta is <code>−BET_STAKE</code>.</li>
+</ul>
+<p>Per-team payouts are exposed in <code>/logs</code> and on the dashboard after round
+close.</p>
+<h3 id="get-leaderboard"><code>GET /leaderboard</code></h3>
+<p>No auth. Returns the current standings.</p>
+<pre><code class="language-json">{
+  &quot;leaderboard&quot;: [
+    {
+      &quot;rank&quot;: 1,
+      &quot;team_id&quot;: &quot;team_imperial_1&quot;,
+      &quot;team_name&quot;: &quot;imperial-1&quot;,
+      &quot;payoff_score&quot;: 12,
+      &quot;participation_score&quot;: 60,
+      &quot;bet_score&quot;: 10,
+      &quot;penalty_score&quot;: -1,
+      &quot;total_score&quot;: 76,
+      &quot;turns_played&quot;: 22,
+      &quot;average_score_per_turn&quot;: 3.45
+    }
+  ]
+}
+</code></pre>
+<h3 id="get-dashboard"><code>GET /dashboard</code></h3>
+<p>No auth. HTML-only operator dashboard. Useful for humans to watch. Don't try to scrape it from your agent — <code>/state</code> and <code>/leaderboard</code> already expose everything.</p>
+<h3 id="get-time"><code>GET /time</code></h3>
+<p>No auth. Pass your local send time as a query param; the server echoes it back alongside its own clock:</p>
+<pre><code>GET /time?client_sent_ms=&lt;your_local_unix_ms&gt;
+</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{&quot;server_unix_ms&quot;: 1779097504053, &quot;client_sent_ms&quot;: 1779097504010, &quot;fixed_tick_mode&quot;: false}
+</code></pre>
+<p>The intended pattern: record <code>t0</code> before the call and <code>t1</code> after the response arrives. Then</p>
+<ul>
+<li><code>RTT       = t1 − t0</code></li>
+<li><code>one_way   ≈ RTT / 2</code></li>
+<li><code>clock_offset ≈ server_unix_ms − (t0 + RTT/2)</code>   <em>(how much your laptop's clock differs from the server's)</em></li>
+</ul>
+<p>Make ~10 calls and take the median to suppress jitter. You only need to do this once at startup — the offset is stable for the duration of the tournament. Then on every <code>/state</code> response, compute your effective deadline as <code>deadline_unix_ms − server_now_unix_ms − RTT</code> and back off a further ~50–100 ms for safety. Submitting later than that is gambling.</p>
+<h2 id="common-pitfalls">Common pitfalls</h2>
+<ol>
+<li><strong>Payoffs are symmetric, not zero-sum.</strong> If you play <code>i</code> against an opponent who plays <code>j</code>, you earn <code>A[i][j]</code> and they earn <code>A[j][i]</code> — <strong>not</strong> <code>−A[i][j]</code>. The matrix you see is the same matrix they see.</li>
+<li><strong>Use server time for deadlines, and budget for network latency.</strong> Every state response carries <code>server_now_unix_ms</code> next to the deadline. Subtract those instead of trusting your laptop's clock. But note that <code>server_now_unix_ms</code> was stamped on the server <em>before</em> the response travelled back to you — by the time you read it, roughly one one-way trip has already passed, and your next POST needs another one-way to reach the server. In practice, treat <code>deadline − server_now − RTT</code> as your effective deadline, and add a safety margin (~50–100 ms). Use <code>/time</code> to measure RTT (see endpoint reference below).</li>
+<li><strong>First-valid-wins on POSTs.</strong> Two teammates POSTing the same action race each other. Pick one driver per phase, or have your script back off on a <code>409</code>.</li>
+<li><strong>Sending no <code>/action</code> is not the same as sending <code>/action</code> with no entries.</strong> Missing entries get a <code>−1</code> penalty per affected pair. If you genuinely don't want to play a pair this turn, the right move is <em>still to submit</em> a valid action — there is no "skip" action.</li>
+<li><strong><code>turn_index</code> must match the current turn.</strong> The server rejects <code>/action</code> payloads aimed at past or future turns — there is no buffering. Always read <code>turn_index</code> from <code>/state</code> immediately before posting, and resubmit on every fresh turn.</li>
+<li><strong>Masked cells reveal as they're played.</strong> The moment any pair plays a previously-masked <code>(row, col)</code>, its value appears in <code>payoff_matrix</code> for everyone on the next <code>/state</code> poll. Don't burn cycles trying to "claim" a cell — there is no claim mechanic.</li>
+<li><strong>Bet only at opt-in.</strong> The <code>/participate</code> request is your one and only chance to bet on the round; there is no separate <code>/bet</code> endpoint and you cannot revise your stance mid-round.</li>
+<li><strong>Authentication is by <code>Authorization: Bearer …</code> header.</strong> Not a cookie, not a query param. If you see a 401, the header is wrong.</li>
+<li><strong>Rate limit:</strong> 30 requests/second/key, burst 60. If you get a 429, the response includes a <code>Retry-After</code> header. Don't busy-loop <code>/state</code>.</li>
+</ol>
+<h2 id="error-responses">Error responses</h2>
+<p>The server distinguishes two failure modes:</p>
+<p><strong>HTTP errors</strong> — body is <code>{"detail": "&lt;message&gt;"}</code>:</p>
+<ul>
+<li><code>400</code> — malformed request body (missing fields, wrong types, out-of-range values).</li>
+<li><code>401</code> — missing/invalid <code>Authorization</code> header on an authenticated endpoint.</li>
+<li><code>409</code> — registration closed, name conflict, etc.</li>
+<li><code>429</code> — rate-limited. Honor the <code>Retry-After</code> header.</li>
+</ul>
+<p><strong>Soft rejections</strong> — HTTP 200, body has <code>"accepted": false</code> and an <code>"error"</code> string:</p>
+<p>This is how <code>/participate</code>, <code>/broadcast</code>, and <code>/action</code> reject submissions for "you sent the right shape but the server cannot accept it right now." Examples of <code>error</code> strings you may see:</p>
+<ul>
+<li><code>"Not in action phase for round N."</code> — you POSTed <code>/action</code> outside the action phase. Wait for <code>/state</code> to report <code>phase: "action"</code>.</li>
+<li><code>"Turn index mismatch."</code> — you POSTed <code>/action</code> with a <code>turn_index</code> that is not the current turn. The server does <strong>not</strong> queue actions for future turns and does <strong>not</strong> replay past ones; you must resubmit when <code>/state</code> reports the matching <code>turn_index</code>.</li>
+<li><code>"Turn already has a submission for this team."</code> — first-valid-wins; another teammate's submission landed first.</li>
+<li><code>"&lt;id&gt; is not your opponent this round."</code> — opponent_id in your payload is not in your current matchups list.</li>
+</ul>
+<p>Always check <code>accepted</code> on the response body, not just the HTTP status. Log the <code>error</code> or <code>detail</code> string when something fails — it usually tells you exactly what went wrong.</p>
+<h3 id="auth-header-on-public-endpoints">Auth header on public endpoints</h3>
+<p><code>/health</code>, <code>/time</code>, <code>/register</code>, <code>/leaderboard</code>, <code>/leaderboard/html</code>, <code>/logs</code>, <code>/news</code>, <code>/dashboard</code>, and <code>/dashboard/snapshot</code> do not check the <code>Authorization</code> header. Sending the header anyway is harmless — it is silently ignored. You can build a single HTTP client wrapper that always attaches the bearer token without special-casing the public endpoints.</p>
+</main>
+</body></html>

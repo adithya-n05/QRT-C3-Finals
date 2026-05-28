@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>QRT.C3 Grand Final &mdash; Dashboard</title>
+<style>
+  :root {
+    --bg:#0f1216; --panel:#1a1f26; --border:#2a313a;
+    --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff;
+    --good:#3fb950; --bad:#f85149;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.4 -apple-system,system-ui,sans-serif}
+  header{padding:14px 20px;border-bottom:1px solid var(--border);
+         display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  header h1{margin:0;font-size:16px;font-weight:600}
+  header .brand-logo{height:44px;width:auto;border-radius:4px;
+                     display:block;flex-shrink:0}
+  .badge{padding:3px 9px;border-radius:10px;font-size:11px;
+         border:1px solid var(--border);color:var(--muted)}
+  .badge.live{background:rgba(63,185,80,.12);color:var(--good);
+              border-color:rgba(63,185,80,.4)}
+  .badge.done{background:rgba(88,166,255,.12);color:var(--accent);
+              border-color:rgba(88,166,255,.4)}
+  .badge.warn{background:rgba(210,153,34,.13);color:#d29922;
+              border-color:rgba(210,153,34,.4)}
+  .badge.bad{background:rgba(248,81,73,.13);color:var(--bad);
+             border-color:rgba(248,81,73,.4)}
+  .header-links{margin-left:auto;display:flex;align-items:center;gap:14px;
+                font-size:12px;color:var(--muted);flex-wrap:wrap}
+  .header-links .endpoint{font-family:ui-monospace,Menlo,Consolas,monospace;
+                          color:var(--text);background:rgba(88,166,255,.10);
+                          border:1px solid rgba(88,166,255,.35);
+                          padding:3px 9px;border-radius:6px;letter-spacing:.2px}
+  .header-links a{color:var(--accent);text-decoration:none;
+                  border-bottom:1px dotted var(--accent);padding-bottom:1px}
+  .header-links a:hover{opacity:.85}
+  /* Outer 2-column grid: left + right resize independently, so a tall
+     leaderboard never pushes the action stream / betting / etc. down.
+     Left column has Current round on top + a sub-grid (Action stream |
+     Betting/News/Broadcasts stacked).  Right column has Leaderboard +
+     Score chart stacked. */
+  .grid{display:grid;gap:14px;padding:14px 20px;
+        grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);
+        align-items:start}
+  .col{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .col-left-sub{display:grid;gap:14px;
+                grid-template-columns:minmax(0,0.7fr) minmax(0,1fr);
+                align-items:stretch}
+  .col-left-sub > .panel,
+  .col-left-sub > .col-side{display:flex;flex-direction:column}
+  .col-side{gap:14px}
+  /* Bounded-scroll for the long-running feeds. */
+  /* Action stream fills its flex parent (the panel is a flex column).
+     No max-height cap — let the panel decide its height (matched to the
+     side-stack via align-items:stretch). overflow-y:auto kicks in only
+     when row count exceeds the available height. */
+  ul.turns{flex:1 1 0;min-height:0;overflow-y:auto}
+  .turns-filter{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+  .turns-filter button{font:inherit;font-size:11px;padding:2px 8px;
+    border-radius:10px;cursor:pointer;background:transparent;
+    border:1px solid var(--border);color:var(--muted);
+    display:inline-flex;align-items:center;gap:5px}
+  .turns-filter button:hover{color:var(--text)}
+  .turns-filter button .dot{width:8px;height:8px;border-radius:50%;
+    display:inline-block}
+  .turns-filter button.active{background:rgba(88,166,255,.12);
+    border-color:var(--accent);color:var(--text)}
+  ul.news{max-height:240px;overflow-y:auto}
+  #lcr-body{max-height:240px;overflow-y:auto}
+  @media(max-width:900px){
+    .grid{grid-template-columns:1fr}
+    .col-left-sub{grid-template-columns:1fr}
+  }
+  .panel{background:var(--panel);border:1px solid var(--border);
+         border-radius:8px;padding:14px}
+  .panel h2{margin:0 0 10px 0;font-size:12px;font-weight:600;
+            color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .countdown{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;
+             text-align:center;padding:6px 0}
+  .countdown.urgent{color:var(--bad)}
+  .countdown .label{display:block;font-size:11px;color:var(--muted);
+                    font-weight:500;letter-spacing:.5px;text-transform:uppercase;
+                    margin-bottom:2px}
+  .roster{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;
+          font-size:11px}
+  .roster .lbl{color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+               margin-right:4px}
+  .roster .b{padding:3px 9px;border-radius:10px;font-size:11px;
+             border:1px solid var(--border);font-variant-numeric:tabular-nums}
+  .roster .b.active{background:rgba(63,185,80,.13);color:var(--good);
+                    border-color:rgba(63,185,80,.4)}
+  .roster .b.inactive{background:rgba(248,81,73,.10);color:var(--bad);
+                      border-color:rgba(248,81,73,.35);opacity:.85}
+  .matrix{display:inline-grid;grid-template-columns:32px repeat(3,42px);
+          gap:4px;margin:6px auto;font-variant-numeric:tabular-nums}
+  .matrix .h{color:var(--muted);font-size:11px;text-align:center;line-height:32px;font-weight:600}
+  .matrix .cell{background:rgba(255,255,255,.04);border-radius:4px;
+                text-align:center;padding:8px 0}
+  .matrix .cell.pos{background:rgba(63,185,80,.13);color:var(--good)}
+  .matrix .cell.neg{background:rgba(248,81,73,.13);color:var(--bad)}
+  .matrix-wrap{text-align:center}
+  .matrix-note{color:var(--muted);font-size:11px;margin-top:6px}
+  /* Functional (not visual) two-column split inside Current round:
+     rosters on the left, matrix on the right. No border. The rosters
+     column can wrap badge pills internally; the matrix keeps natural
+     width. Narrow panels collapse to stacked via flex-wrap. */
+  .round-body{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;
+              margin-top:6px}
+  /* 50:50 reserved width between rosters and matrix. The matrix stays at
+     its fixed natural size (~170px) but sits inside a half-width wrap so
+     the two halves are visually balanced. text-align:center on the wrap
+     centres the matrix horizontally within its half. */
+  .round-rosters{flex:1 1 200px;min-width:0}
+  .round-body > .matrix-wrap{flex:1 1 180px;min-width:0}
+  ul.turns{list-style:none;padding:0;margin:0}
+  ul.turns li{display:grid;
+              grid-template-columns: 60px minmax(0,1fr) auto 14px auto minmax(0,1fr);
+              align-items:center;gap:6px;padding:6px 4px;
+              border-bottom:1px solid var(--border);font-size:13px}
+  ul.turns .tid{color:var(--muted);font-size:11px}
+  ul.turns .teamA{text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  ul.turns .teamB{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  ul.turns .mid{color:var(--muted);text-align:center;font-size:10px}
+  ul.turns .pay{font-variant-numeric:tabular-nums;min-width:32px;text-align:center;font-weight:600}
+  ul.turns .pay.pos{color:var(--good)}
+  ul.turns .pay.neg{color:var(--bad)}
+  .act{display:inline-block;min-width:24px;height:24px;line-height:24px;
+       text-align:center;font-weight:700;font-size:12px;border-radius:5px;color:#fff}
+  .act.a0{background:#d29922} .act.a1{background:#2f81f7} .act.a2{background:#f85149}
+  .act.miss{background:#44474d;opacity:.6}
+  /* Cap the leaderboard so the score chart below always stays in view,
+     even on short (e.g. projected 1024x768) displays; scroll inside the
+     wrapper with a sticky header so column labels stay anchored. */
+  .lb-scroll{max-height:32vh;overflow-y:auto}
+  table.lb{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  table.lb th,table.lb td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)}
+  table.lb thead th{position:sticky;top:0;background:var(--panel);z-index:1}
+  table.lb th{color:var(--muted);font-weight:500;font-size:11px;
+              text-transform:uppercase;letter-spacing:.4px}
+  table.lb td.score{text-align:right;font-weight:600}
+  table.lb th.num,table.lb td.num{text-align:right;font-variant-numeric:tabular-nums}
+  table.lb td.num{min-width:38px}
+  table.lb th.rank,table.lb td.rank{min-width:22px;color:var(--muted);font-weight:600}
+  table.lb td.num.pos{color:var(--good)}
+  table.lb td.num.neg{color:var(--bad)}
+  table.lb td.tot{font-weight:700}
+  .team-dot{display:inline-block;width:9px;height:9px;border-radius:50%;
+            margin-right:6px;vertical-align:middle}
+  ul.glog{list-style:none;padding:0;margin:0;max-height:400px;overflow-y:auto}
+  ul.glog li{display:grid;grid-template-columns:32px 1fr auto;gap:6px;
+             padding:5px 4px;border-bottom:1px solid var(--border);
+             font-size:12px;align-items:center}
+  ul.glog li .rd{color:var(--muted);font-variant-numeric:tabular-nums}
+  ul.glog li .body{word-wrap:break-word}
+  ul.glog li .delta{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;min-width:32px}
+  ul.glog li.correct .delta{color:var(--good)}
+  ul.glog li.wrong{opacity:.85}
+  ul.glog li.wrong .delta{color:var(--bad)}
+  .glog-empty{color:var(--muted);font-style:italic;font-size:12px;padding:8px 4px}
+  .prop-tag{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:18px;
+            font-weight:700;color:var(--accent);background:rgba(88,166,255,.10);
+            border:1px solid rgba(88,166,255,.35);padding:3px 10px;border-radius:6px;
+            letter-spacing:.5px}
+  .bet-headline{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .bet-headline .label{color:var(--muted);font-size:12px}
+  .bet-bar{display:flex;height:22px;border-radius:5px;overflow:hidden;
+           border:1px solid var(--border);font-size:11px;font-weight:600;
+           color:#0c0c0c;background:var(--panel)}
+  .bet-bar > div{display:flex;align-items:center;justify-content:center;
+                 min-width:0;overflow:hidden;white-space:nowrap;padding:0 4px;
+                 transition:flex-basis .25s ease-out}
+  .bet-seg-agree{background:#3fb950}
+  .bet-seg-disagree{background:#f85149}
+  .bet-seg-abstain{background:#5c6677;color:#e6edf3}
+  .bet-bar-empty{color:var(--muted);font-style:italic;font-size:12px;
+                 padding:8px 0;text-align:center}
+  .bet-last{margin-top:14px;font-size:12px;color:var(--muted);
+            padding-top:10px;border-top:1px solid var(--border)}
+  .bet-last .true{color:var(--good);font-weight:600}
+  .bet-last .false{color:var(--bad);font-weight:600}
+  .bet-last code{font-family:ui-monospace,Menlo,Consolas,monospace;
+                 background:rgba(255,255,255,.06);padding:1px 5px;
+                 border-radius:3px;color:var(--text)}
+  .bet-last .tally{font-family:ui-monospace,Menlo,Consolas,monospace;
+                   color:var(--text);font-weight:600}
+  .bc-pair{padding:8px 10px;margin:6px 0;background:rgba(255,255,255,.03);
+           border-radius:6px;border-left:3px solid var(--accent)}
+  .bc-pair .who{color:var(--muted);font-size:11px;margin-bottom:3px}
+  .bc-pair .msg{font-size:12px;word-wrap:break-word}
+  .bc-pair .msg.empty{color:var(--muted);font-style:italic}
+  .lcr-empty{color:var(--muted);font-style:italic;font-size:12px}
+  ul.news{list-style:none;padding:0;margin:0;max-height:320px;overflow-y:auto}
+  ul.news li{padding:8px 6px 8px 10px;border-bottom:1px solid var(--border);
+             font-size:12px;line-height:1.35;position:relative}
+  ul.news li::before{content:"";position:absolute;left:0;top:8px;bottom:8px;
+                     width:3px;border-radius:2px;background:var(--accent)}
+  ul.news li.imp-0::before{background:var(--muted)}
+  ul.news li.imp-1::before{background:var(--muted)}
+  ul.news li.imp-2::before{background:var(--accent)}
+  ul.news li.imp-3::before{background:#d29922}
+  ul.news li.imp-4::before{background:var(--bad)}
+  ul.news li.imp-5::before{background:var(--bad)}
+  ul.news .meta{color:var(--muted);font-size:10px;margin-bottom:2px;
+                font-variant-numeric:tabular-nums;letter-spacing:.3px}
+  ul.news .text{}
+  .news-empty{color:var(--muted);font-style:italic;font-size:12px;padding:8px 4px}
+  .chart-wrap{display:block;width:100%}
+  .chart-wrap svg{display:block;width:100%;height:auto}
+  .chart-empty{color:var(--muted);font-style:italic;font-size:12px;padding:8px 4px}
+  .chart-legend{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;font-size:11px}
+  /* Each chip is a button — same inclusion semantics as the action-stream
+     filter (line 558): empty filter = All visible; clicking team chips
+     narrows the chart to only those; "All" resets. */
+  .chart-legend .leg{display:inline-flex;align-items:center;gap:5px;
+    background:transparent;border:1px solid var(--border);color:var(--muted);
+    font:inherit;font-size:11px;padding:2px 8px;border-radius:10px;cursor:pointer}
+  .chart-legend .leg:hover{color:var(--text)}
+  .chart-legend .leg.active{background:rgba(88,166,255,.12);
+    border-color:var(--accent);color:var(--text)}
+  .chart-legend .leg .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .footer{padding:10px 20px;font-size:11px;color:var(--muted);
+          border-top:1px solid var(--border);display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<header>
+  <img src="/static/qrt-logo.png" class="brand-logo" alt="QRT" onerror="this.style.display='none'">
+  <h1>QRT.C3 Grand Final</h1>
+  <span id="phase-badge" class="badge">connecting...</span>
+  <span id="round-badge" class="badge">&ndash;</span>
+  <span id="health-badge" class="badge" title="Server latency p95 over last 30s">&ndash;</span>
+  <span id="stage-badge" class="badge" title="Time remaining in this stage (RPS_MAX_TOURNAMENT_DURATION)" style="display:none">&ndash;</span>
+  <div id="header-links" class="header-links">
+    <span class="endpoint" id="endpoint-url" title="Open this live dashboard at this URL">&ndash;</span>
+    <a href="/docs/cheatsheet" target="_blank" rel="noopener">Cheat sheet</a>
+    <a href="/docs/rules" target="_blank" rel="noopener">Rules</a>
+    <a href="/docs/api" target="_blank" rel="noopener">API</a>
+    <a href="/docs" target="_blank" rel="noopener">Docs</a>
+  </div>
+</header>
+
+<div class="grid">
+  <div class="col">
+    <div class="panel">
+      <h2>Current round</h2>
+      <div id="countdown" class="countdown"><span class="label">deadline</span>&mdash;</div>
+      <div class="round-body">
+        <div class="round-rosters">
+          <div id="roster-active" class="roster"></div>
+          <div id="roster-inactive" class="roster"></div>
+        </div>
+        <div class="matrix-wrap" id="matrix-wrap" style="display:none">
+          <div id="matrix" class="matrix"></div>
+          <div class="matrix-note">payoff for row-player when opponent plays column</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-left-sub">
+      <div class="panel">
+        <h2 id="turns-title">Action stream</h2>
+        <div id="turns-filter" class="turns-filter"></div>
+        <ul id="turns" class="turns"></ul>
+      </div>
+
+      <div class="col-side">
+        <div class="panel">
+          <h2>Betting market</h2>
+          <div id="bet-current"></div>
+          <div id="bet-last" class="bet-last"></div>
+        </div>
+
+        <div class="panel">
+          <h2>News feed</h2>
+          <ul id="news" class="news"></ul>
+        </div>
+
+        <div class="panel">
+          <h2 id="lcr-title">Broadcasts</h2>
+          <div id="lcr-body" style="font-size:13px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="panel">
+      <h2>Leaderboard</h2>
+      <div class="lb-scroll">
+        <table class="lb">
+          <thead><tr>
+            <th class="num rank" title="Rank by total score">#</th>
+            <th>Team</th>
+            <th class="num" title="Match payoffs">Pay</th>
+            <th class="num" title="Per-round participation payment">Pot</th>
+            <th class="num" title="Betting-market net payouts (winners share losers' stakes)">Bet</th>
+            <th class="num" title="Missed-action penalties">Pen</th>
+            <th class="num">Total</th>
+          </tr></thead>
+          <tbody id="lb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Score over rounds</h2>
+      <div id="chart" class="chart-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>Polling /dashboard/snapshot every 500ms</span>
+  <span id="conn">&mdash;</span>
+</div>
+
+<script>
+function shortTeam(id){ return (id||'').replace(/^team_/,''); }
+function fmtPay(x){
+  const cls = x>0?'pos':x<0?'neg':'';
+  return '<span class="pay '+cls+'">'+(x>0?'+':'')+x+'</span>';
+}
+function actCell(a, missed){
+  if(a===null||a===undefined) return '<span class="act miss">&middot;</span>';
+  if(missed) return '<span class="act miss">'+a+'</span>';
+  const lbl=['R','P','S'];
+  return '<span class="act a'+a+'">'+lbl[a]+'</span>';
+}
+function setBadge(el,text,cls){ el.textContent=text; el.className='badge'+(cls?' '+cls:''); }
+function renderHealth(snap){
+  const el=document.getElementById('health-badge');
+  const h=snap.server_health;
+  if(!h || !h.requests){
+    setBadge(el, '—');
+    el.title = 'Server latency p95 over last 30s (no traffic yet)';
+    return;
+  }
+  // Buckets: green < 100ms, amber < 500ms, red ≥ 500ms.
+  const p95 = h.p95_ms || 0;
+  let cls = '';
+  if(p95 >= 500) cls = 'bad';
+  else if(p95 >= 100) cls = 'warn';
+  else cls = 'live';
+  setBadge(el, p95.toFixed(0)+'ms p95 · '+h.rps.toFixed(0)+' rps', cls);
+  // Build a tooltip with the per-route breakdown.
+  const lines = ['Server p95='+h.p95_ms+'ms p50='+h.p50_ms+'ms max='+h.max_ms+
+                 'ms over '+h.window_seconds+'s ('+h.requests+' req)',
+                 '— by route —'];
+  const routes = h.by_route||{};
+  const rsorted = Object.entries(routes).sort((a,b)=>b[1].p95_ms - a[1].p95_ms).slice(0, 10);
+  for(const [r, s] of rsorted){
+    lines.push(r+'  n='+s.n+'  p50='+s.p50_ms+'  p95='+s.p95_ms+'  max='+s.max_ms);
+  }
+  const clients = h.by_client||{};
+  if(Object.keys(clients).length){
+    lines.push('— by client —');
+    const csorted = Object.entries(clients).sort((a,b)=>b[1].p95_ms - a[1].p95_ms).slice(0, 12);
+    for(const [c, s] of csorted){
+      lines.push(c+'  n='+s.n+'  p50='+s.p50_ms+'  p95='+s.p95_ms+'  max='+s.max_ms);
+    }
+  }
+  el.title = lines.join('\n');
+}
+
+function renderMatrix(matrix){
+  const wrap=document.getElementById('matrix-wrap');
+  const m=document.getElementById('matrix');
+  if(!matrix){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  const lbl=['R','P','S'];
+  let html='<div class="h"></div>';
+  for(let j=0;j<3;j++) html+='<div class="h">'+lbl[j]+'</div>';
+  for(let i=0;i<3;i++){
+    html+='<div class="h">'+lbl[i]+'</div>';
+    for(let j=0;j<3;j++){
+      const v=matrix[i][j];
+      if(v===null){ html+='<div class="cell">?</div>'; continue; }
+      const cls=v>0?'pos':v<0?'neg':'';
+      html+='<div class="cell '+cls+'">'+(v>0?'+':'')+v+'</div>';
+    }
+  }
+  m.innerHTML=html;
+}
+
+function renderCurrent(snap){
+  const cur=snap.current;
+  const phaseEl=document.getElementById('phase-badge');
+  const roundEl=document.getElementById('round-badge');
+  const cd=document.getElementById('countdown');
+
+  const clearRoster = () => {
+    document.getElementById('roster-active').innerHTML='';
+    document.getElementById('roster-inactive').innerHTML='';
+  };
+  if(snap.tournament_state==='TOURNAMENT_COMPLETE'){
+    setBadge(phaseEl,'complete','done');
+    cd.innerHTML='<span class="label">final</span>&mdash;';
+    roundEl.textContent=''; clearRoster(); renderMatrix(null); return;
+  }
+  if(snap.tournament_state==='ROUND_PAUSE' && snap.pause){
+    setBadge(phaseEl,'paused');
+    const completed = snap.pause.completed_round_index || 0;
+    const next = snap.pause.next_round_index || 1;
+    roundEl.textContent = completed > 0 ? `R${completed} complete` : 'pre-round-1';
+    const target = snap.pause.next_round_starts_at_unix_ms;
+    if(target){
+      const ms = target - snap.now_unix_ms;
+      cd.innerHTML = '<span class="label">round ' + next + ' starts in</span>' +
+                     Math.max(0, ms/1000).toFixed(1) + 's';
+      cd.classList.toggle('urgent', ms < 2000);
+    } else {
+      cd.innerHTML='<span class="label">paused</span>&mdash;';
+    }
+    clearRoster();
+    renderMatrix(null);
+    return;
+  }
+  if(!cur){
+    setBadge(phaseEl, (snap.tournament_state||'').toLowerCase());
+    cd.innerHTML='<span class="label">deadline</span>&mdash;';
+    roundEl.textContent=''; clearRoster(); renderMatrix(null); return;
+  }
+
+  const phaseLabel = cur.phase.replace('ROUND_','').toLowerCase();
+  setBadge(phaseEl, phaseLabel, cur.phase==='ROUND_PLAYING' ? 'live':'');
+  roundEl.textContent='round '+cur.round_index;
+
+  if(cur.deadline_unix_ms){
+    const ms = cur.deadline_unix_ms - snap.now_unix_ms;
+    let label;
+    if(cur.phase==='ROUND_PLAYING'){
+      label='turn '+cur.current_turn_index+' closes in';
+    } else if(cur.phase==='ROUND_BROADCAST'){
+      label='broadcast closes in';
+    } else if(cur.phase==='ROUND_THINKING'){
+      label='thinking closes in';
+    } else if(cur.phase==='ROUND_OPT_IN'){
+      label='opt-in closes in';
+    } else {
+      label='deadline';
+    }
+    cd.innerHTML='<span class="label">'+label+'</span>'+Math.max(0,ms/1000).toFixed(1)+'s';
+    cd.classList.toggle('urgent', ms<700);
+  } else {
+    cd.innerHTML='<span class="label">deadline</span>&mdash;';
+    cd.classList.remove('urgent');
+  }
+
+  // Active / inactive roster badges.
+  const allTeams = (snap.leaderboard||[]).map(e=>e.team_id);
+  const active = cur.joiners || [];
+  const inactiveSet = allTeams.filter(t => !active.includes(t));
+  const aEl = document.getElementById('roster-active');
+  const iEl = document.getElementById('roster-inactive');
+  if(active.length){
+    aEl.innerHTML = '<span class="lbl">Active:</span>' +
+      active.map(t=>'<span class="b active">'+shortTeam(t)+'</span>').join('');
+  } else { aEl.innerHTML=''; }
+  if(inactiveSet.length){
+    iEl.innerHTML = '<span class="lbl">Sitting out:</span>' +
+      inactiveSet.map(t=>'<span class="b inactive">'+shortTeam(t)+'</span>').join('');
+  } else { iEl.innerHTML=''; }
+
+  renderMatrix(cur.payoff_matrix);
+}
+
+const _turnFilter = new Set();
+let _turnFilterTeams = '';
+
+// Score chart filter: included team_ids in /dashboard's "Score over
+// rounds" panel. Empty set means "All" (show every team) — matches the
+// action-stream filter semantics. Toggled by clicking legend chips; the
+// "All" pill clears the set. Y-axis autoscales to the included series so
+// isolating one team zooms in on its detail instead of squashing it
+// against the leader's curve.
+const _chartFilter = new Set();
+
+function renderTurnFilter(snap){
+  // Buttons: "All" + one per leaderboard team that has played a turn.
+  // Re-renders only when the active-team set changes, so click handlers
+  // and "active" highlights survive the 500ms snapshot polls.
+  const lb = (snap && snap.leaderboard) || [];
+  const active = lb.filter(e => (e.turns_played||0) > 0)
+                   .map(e => ({id:e.team_id, name:e.team_name||e.team_id}));
+  const key = active.map(t=>t.id).join('|');
+  if(key === _turnFilterTeams) return;
+  _turnFilterTeams = key;
+  // Drop selections for teams that no longer exist.
+  for(const id of Array.from(_turnFilter)){
+    if(!active.some(t=>t.id===id)) _turnFilter.delete(id);
+  }
+  const root = document.getElementById('turns-filter');
+  root.innerHTML='';
+  const all = document.createElement('button');
+  all.type='button';
+  all.dataset.team='';
+  all.textContent='All';
+  if(_turnFilter.size===0) all.classList.add('active');
+  all.onclick = () => { _turnFilter.clear(); renderTurnsList(_lastSnap); refreshFilterActive(); };
+  root.appendChild(all);
+  for(const t of active){
+    const b = document.createElement('button');
+    b.type='button';
+    b.dataset.team=t.id;
+    b.innerHTML = '<span class="dot" style="background:'+teamColor(t.id)+'"></span>'
+                + shortTeam(t.id);
+    if(_turnFilter.has(t.id)) b.classList.add('active');
+    b.onclick = () => {
+      if(_turnFilter.has(t.id)) _turnFilter.delete(t.id);
+      else _turnFilter.add(t.id);
+      renderTurnsList(_lastSnap);
+      refreshFilterActive();
+    };
+    root.appendChild(b);
+  }
+}
+
+function refreshFilterActive(){
+  const root = document.getElementById('turns-filter');
+  for(const b of root.querySelectorAll('button')){
+    const id = b.dataset.team;
+    const on = id ? _turnFilter.has(id) : _turnFilter.size===0;
+    b.classList.toggle('active', on);
+  }
+}
+
+let _lastSnap = null;
+
+function renderTurns(snap){
+  _lastSnap = snap;
+  renderTurnFilter(snap);
+  renderTurnsList(snap);
+}
+
+function renderTurnsList(snap){
+  const ul=document.getElementById('turns');
+  const title=document.getElementById('turns-title');
+  const turns=(snap && snap.recent_turns)||[];
+  if(turns.length){
+    title.textContent='Action stream — Round '+turns[0].round_index;
+  } else {
+    title.textContent='Action stream';
+  }
+  ul.innerHTML='';
+  for(const t of turns){
+    if(_turnFilter.size>0 && !_turnFilter.has(t.team_a) && !_turnFilter.has(t.team_b)) continue;
+    const li=document.createElement('li');
+    const dotA = '<span class="team-dot" style="background:'+teamColor(t.team_a)+'"></span>';
+    const dotB = '<span class="team-dot" style="background:'+teamColor(t.team_b)+';margin-right:0;margin-left:6px"></span>';
+    li.innerHTML =
+      '<span class="tid">R'+t.round_index+' T'+t.turn_index+'</span>'+
+      '<span class="teamA">'+dotA+shortTeam(t.team_a)+' '+actCell(t.action_a,t.missed_a)+'</span>'+
+      fmtPay(t.payoff_a)+
+      '<span class="mid">vs</span>'+
+      fmtPay(t.payoff_b)+
+      '<span class="teamB">'+actCell(t.action_b,t.missed_b)+' '+shortTeam(t.team_b)+dotB+'</span>';
+    ul.appendChild(li);
+  }
+}
+
+function colNum(v){
+  v = v || 0;
+  const cls = v > 0 ? ' pos' : v < 0 ? ' neg' : '';
+  const s = (v > 0 ? '+' : '') + v;
+  return '<td class="num'+cls+'">'+s+'</td>';
+}
+
+function renderLeaderboard(snap){
+  const tb=document.getElementById('lb');
+  tb.innerHTML='';
+  for(const e of (snap.leaderboard||[])){
+    const tr=document.createElement('tr');
+    const tot=e.total_score||0;
+    const totCls=tot>0?' pos':tot<0?' neg':'';
+    const dot = '<span class="team-dot" style="background:'+teamColor(e.team_id)+'"></span>';
+    tr.innerHTML='<td class="num rank">'+(e.rank||'')+'</td>'+
+      '<td>'+dot+shortTeam(e.team_id)+'</td>'+
+      colNum(e.payoff_score)+
+      colNum(e.participation_score)+
+      colNum(e.bet_score)+
+      colNum(e.penalty_score)+
+      '<td class="num tot'+totCls+'">'+((tot>0?'+':'')+tot)+'</td>';
+    tb.appendChild(tr);
+  }
+}
+
+function renderNews(snap){
+  const ul=document.getElementById('news');
+  const items=snap.news||[];
+  if(items.length===0){
+    ul.innerHTML='<div class="news-empty">No news yet.</div>';
+    return;
+  }
+  ul.innerHTML='';
+  for(const n of items){
+    const li=document.createElement('li');
+    const imp=Math.max(0,Math.min(5,n.importance||1));
+    li.className='imp-'+imp;
+    const r = n.round_index != null ? ('R'+n.round_index) : '';
+    const t = n.turn_index != null ? (' T'+n.turn_index) : '';
+    li.innerHTML='<div class="meta">'+r+t+'</div>'+
+                 '<div class="text">'+(n.text||'')+'</div>';
+    ul.appendChild(li);
+  }
+}
+
+function renderLastRound(snap){
+  // v3: public broadcasts. Show the current round's live stream when
+  // available, else the last completed round's broadcasts.
+  const body=document.getElementById('lcr-body');
+  const title=document.getElementById('lcr-title');
+  const cur = snap && snap.current;
+  let label, bcs;
+  if(cur && cur.broadcasts && cur.broadcasts.length){
+    label = 'Round '+cur.round_index+' &mdash; broadcasts (live)';
+    bcs = cur.broadcasts;
+  } else if(snap && snap.last_complete_round && snap.last_complete_round.broadcasts){
+    label = 'Round '+snap.last_complete_round.round_index+' &mdash; broadcasts';
+    bcs = snap.last_complete_round.broadcasts;
+  } else {
+    title.innerHTML = 'Broadcasts';
+    body.innerHTML = '<div class="lcr-empty">No broadcasts yet.</div>';
+    return;
+  }
+  title.innerHTML = label;
+  if(!bcs.length){
+    body.innerHTML='<div class="lcr-empty">No broadcasts sent.</div>';
+    return;
+  }
+  let html='';
+  for(const b of bcs){
+    const msg=(b.message||'').trim();
+    const sender=b.from_name||shortTeam(b.from);
+    html+='<div class="bc-pair">';
+    html+='<div class="who">'+sender+'</div>';
+    html+='<div class="msg'+(msg?'':' empty')+'">'+(msg?msg:'(empty)')+'</div>';
+    html+='</div>';
+  }
+  body.innerHTML=html;
+}
+
+function renderBetMarket(snap){
+  const cur = snap && snap.current;
+  const head = document.getElementById('bet-current');
+  const last = document.getElementById('bet-last');
+  // Current-round proposition + stance bar.
+  if(head){
+    const prop = cur && cur.bet_proposition;
+    if(!prop){
+      head.innerHTML='<div class="bet-bar-empty">No active round.</div>';
+    } else {
+      const agree = (cur.bet_agree_count != null) ? cur.bet_agree_count : 0;
+      const disagree = (cur.bet_disagree_count != null) ? cur.bet_disagree_count : 0;
+      const joiners = (cur.joiners || []).length;
+      // Abstain = joiners who didn't bet. Goes negative briefly during opt-in
+      // when not everyone has voted yet — clamp at 0.
+      const abstain = Math.max(0, joiners - agree - disagree);
+      const total = agree + disagree + abstain;
+      const pct = (n) => total > 0 ? (n / total * 100) : 0;
+      const segs = [];
+      if(agree > 0) segs.push(
+        '<div class="bet-seg-agree" style="flex:'+pct(agree)+
+        ' 0 0;min-width:'+(agree>0?'28px':'0')+'">'+
+        '✓ '+agree+'</div>'
+      );
+      if(disagree > 0) segs.push(
+        '<div class="bet-seg-disagree" style="flex:'+pct(disagree)+
+        ' 0 0;min-width:'+(disagree>0?'28px':'0')+'">'+
+        '✗ '+disagree+'</div>'
+      );
+      if(abstain > 0) segs.push(
+        '<div class="bet-seg-abstain" style="flex:'+pct(abstain)+
+        ' 0 0;min-width:'+(abstain>0?'28px':'0')+'">'+
+        'abs '+abstain+'</div>'
+      );
+      const bar = segs.length
+        ? '<div class="bet-bar">'+segs.join('')+'</div>'
+        : '<div class="bet-bar-empty">No bets yet.</div>';
+      head.innerHTML =
+        '<div class="bet-headline">'+
+          '<span class="label">Round '+cur.round_index+':</span>'+
+          '<span class="prop-tag">'+prop+'</span>'+
+        '</div>'+
+        bar;
+    }
+  }
+  // Last-round resolution line, with R/P/S tally so spectators see why.
+  if(last){
+    const lcr = snap && snap.last_complete_round;
+    if(lcr && lcr.bet_proposition && lcr.bet_resolution){
+      const cls = lcr.bet_resolution === 'TRUE' ? 'true' : 'false';
+      const ac = lcr.action_counts || {};
+      const tally = (ac.R != null || ac.P != null || ac.S != null)
+        ? ' &middot; <span class="tally">R:'+(ac.R||0)+' P:'+(ac.P||0)+' S:'+(ac.S||0)+'</span>'
+        : '';
+      last.innerHTML = 'R'+lcr.round_index+': <code>'+lcr.bet_proposition+
+        '</code> &rarr; <span class="'+cls+'">'+lcr.bet_resolution+'</span>'+tally;
+    } else {
+      last.innerHTML = '';
+    }
+  }
+}
+
+// Distinct categorical palette tuned for the dark panel bg (#1a1f26).
+// Hues are spaced ~45deg apart and the cool tones (cyan/blue/violet) are
+// pushed far enough apart in lightness + saturation that they don't read
+// as "shades of the same blue". Order goes round the colour wheel:
+// red → orange → yellow → green → cyan → blue → violet → pink.
+const CHART_PALETTE = ['#ef4444','#fb923c','#facc15','#4ade80',
+                       '#22d3ee','#60a5fa','#a78bfa','#f472b6'];
+// Stable team -> color: assignment by index into a sorted team_id list,
+// not by hash. Hash collisions on 8 teams across 8 colors are likely;
+// indexing guarantees uniqueness when teams <= palette size, and gives
+// every team the same color every snapshot.
+let _teamColorMap = {};
+function rebuildTeamColors(seriesOrLeaderboard){
+  const ids = seriesOrLeaderboard.map(s => s.team_id).sort();
+  const next = {};
+  for(let i=0;i<ids.length;i++) next[ids[i]] = CHART_PALETTE[i % CHART_PALETTE.length];
+  _teamColorMap = next;
+}
+function teamColor(teamId){
+  return _teamColorMap[teamId] || CHART_PALETTE[0];
+}
+function renderChart(snap){
+  const el=document.getElementById('chart');
+  const h=snap.score_history||{rounds:[],series:[]};
+  if(!h.rounds.length || !h.series.length){
+    el.innerHTML='<div class="chart-empty">No completed rounds yet.</div>';
+    return;
+  }
+  // Drop selections for series no longer present (team got removed
+  // between snapshots) so stale ids don't leak forever.
+  const present = new Set(h.series.map(s=>s.team_id));
+  for(const id of Array.from(_chartFilter)){
+    if(!present.has(id)) _chartFilter.delete(id);
+  }
+  // Empty filter = "All" (show every series); non-empty = include only
+  // the picked teams. Matches the action-stream filter inclusion model.
+  const visible = _chartFilter.size === 0
+                  ? h.series
+                  : h.series.filter(s => _chartFilter.has(s.team_id));
+  const W=300, H=180, pad={l:30,r:8,t:8,b:24};
+  const xs=h.rounds;
+  let yMin=0, yMax=1;
+  // Autoscale to the visible series so isolating one team zooms in
+  // on its detail instead of squashing it against the leader's curve.
+  for(const s of visible) for(const v of s.totals){
+    if(v<yMin) yMin=v;
+    if(v>yMax) yMax=v;
+  }
+  const range=Math.max(yMax-yMin, 1);
+  yMin -= Math.max(2, range*0.08);
+  yMax += Math.max(2, range*0.08);
+  const xScale=i => pad.l + (xs.length<=1 ? 0 : i/(xs.length-1)) * (W-pad.l-pad.r);
+  const yScale=v => pad.t + (1-(v-yMin)/(yMax-yMin)) * (H-pad.t-pad.b);
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">';
+  // zero baseline
+  if(yMin<=0 && 0<=yMax){
+    const y0=yScale(0).toFixed(1);
+    svg+='<line x1="'+pad.l+'" y1="'+y0+'" x2="'+(W-pad.r)+'" y2="'+y0+
+         '" stroke="#444" stroke-dasharray="2,2"/>';
+  }
+  // y-axis labels
+  svg+='<text x="'+(pad.l-4)+'" y="'+(yScale(yMax)+3).toFixed(1)+
+       '" text-anchor="end" font-size="6" fill="#888">'+Math.round(yMax)+'</text>';
+  svg+='<text x="'+(pad.l-4)+'" y="'+(yScale(yMin)+3).toFixed(1)+
+       '" text-anchor="end" font-size="6" fill="#888">'+Math.round(yMin)+'</text>';
+  if(yMin<=0 && 0<=yMax){
+    svg+='<text x="'+(pad.l-4)+'" y="'+(yScale(0)+3).toFixed(1)+
+         '" text-anchor="end" font-size="6" fill="#666">0</text>';
+  }
+  // x-axis ticks
+  const ticks=Math.min(xs.length, 6);
+  for(let i=0;i<ticks;i++){
+    const idx=Math.round(i*(xs.length-1)/Math.max(ticks-1,1));
+    const x=xScale(idx).toFixed(1);
+    svg+='<text x="'+x+'" y="'+(H-8)+'" text-anchor="middle" font-size="6" fill="#888">'+xs[idx]+'</text>';
+  }
+  // lines + last-point markers (visible series only)
+  for(const s of visible){
+    const color=teamColor(s.team_id);
+    let d='';
+    for(let i=0;i<xs.length;i++){
+      const x=xScale(i).toFixed(1), y=yScale(s.totals[i]).toFixed(1);
+      d += (i?'L':'M') + x + ',' + y;
+    }
+    svg+='<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="1.6" stroke-linejoin="round"/>';
+    const li=xs.length-1;
+    svg+='<circle cx="'+xScale(li).toFixed(1)+'" cy="'+yScale(s.totals[li]).toFixed(1)+
+         '" r="2.6" fill="'+color+'"/>';
+  }
+  svg+='</svg>';
+  // Legend: "All" pill first (active when filter is empty), then one
+  // pill per series (active when included). Always render every series
+  // so the user can pick a team back into the filter after excluding it.
+  let legend='<div class="chart-legend">';
+  legend+='<button type="button" class="leg'+(_chartFilter.size===0?' active':'')+
+          '" data-team="" title="Show all teams">All</button>';
+  for(const s of h.series){
+    const on = _chartFilter.has(s.team_id) ? ' active' : '';
+    legend+='<button type="button" class="leg'+on+'" data-team="'+s.team_id+
+            '" title="Click to toggle this team in the chart">'+
+            '<span class="dot" style="background:'+teamColor(s.team_id)+'"></span>'+
+            shortTeam(s.team_id)+'</button>';
+  }
+  legend+='</div>';
+  el.innerHTML=svg+legend;
+  // Attach click handlers (innerHTML wipes them on every poll).
+  for(const b of el.querySelectorAll('.chart-legend .leg')){
+    b.onclick = () => {
+      const id = b.dataset.team;
+      if(!id){ _chartFilter.clear(); }
+      else if(_chartFilter.has(id)){ _chartFilter.delete(id); }
+      else { _chartFilter.add(id); }
+      renderChart(_lastSnap);
+    };
+  }
+}
+
+function renderStageCountdown(snap){
+  // Only meaningful when the operator has set RPS_MAX_TOURNAMENT_DURATION (>0)
+  // and the tournament has started. Hides itself otherwise.
+  const el = document.getElementById('stage-badge');
+  if(!el) return;
+  const cap = snap && snap.tournament_max_duration_seconds;
+  const started = snap && snap.tournament_started_at_unix_ms;
+  const now = (snap && snap.now_unix_ms) || Date.now();
+  if(!cap || !started){ el.style.display = 'none'; return; }
+  const remainingMs = (started + cap*1000) - now;
+  el.style.display = '';
+  if(remainingMs <= 0){
+    el.textContent = 'stage time up';
+    el.className = 'badge bad';
+    return;
+  }
+  const totalSec = Math.floor(remainingMs/1000);
+  const mm = Math.floor(totalSec/60);
+  const ss = totalSec % 60;
+  el.textContent = `Stage ends in: ${mm}:${ss.toString().padStart(2,'0')}`;
+  el.className = (remainingMs < 60_000) ? 'badge warn'
+                : (remainingMs < 5*60_000) ? 'badge warn'
+                : 'badge live';
+}
+
+function renderEndpoint(snap){
+  // Prefer the operator-configured RPS_PUBLIC_URL so a projected dashboard
+  // shows the externally-reachable URL spectators can type, even when the
+  // operator's browser is hitting localhost over SSH. Fall back to the
+  // viewer's own origin. Append /dashboard so the badge points spectators
+  // at this view directly.
+  const base = (snap && snap.public_url) || window.location.origin;
+  // Strip trailing slashes; using a RegExp ctor avoids a Python escape warning
+  // when the JS literal lives inside this triple-quoted string.
+  const url = base.replace(new RegExp('/+$'), '') + '/dashboard';
+  const el = document.getElementById('endpoint-url');
+  if(el && el.textContent !== url){ el.textContent = url; }
+}
+
+async function refresh(){
+  try{
+    const r=await fetch('/dashboard/snapshot');
+    const snap=await r.json();
+    document.getElementById('conn').textContent='connected · '+new Date().toLocaleTimeString();
+    renderEndpoint(snap);
+    renderStageCountdown(snap);
+    // Build team->color map first so every renderer can use teamColor().
+    // Leaderboard is always populated; fall back to score_history series
+    // if the leaderboard is empty (very early in a tournament).
+    const teams = (snap.leaderboard && snap.leaderboard.length)
+                  ? snap.leaderboard
+                  : ((snap.score_history && snap.score_history.series) || []);
+    rebuildTeamColors(teams);
+    renderCurrent(snap);
+    renderTurns(snap);
+    renderLeaderboard(snap);
+    renderBetMarket(snap);
+    renderNews(snap);
+    renderLastRound(snap);
+    renderChart(snap);
+    renderHealth(snap);
+  } catch(e){
+    document.getElementById('conn').textContent='error: '+e.message;
+  }
+}
+
+setInterval(refresh, 500);
+refresh();
+</script>
+</body>
+</html>

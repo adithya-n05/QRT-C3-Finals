@@ -1,0 +1,23 @@
+/health GET -> Health
+/time GET -> Server Time
+/register POST -> Register
+/admin/start POST -> Admin Start
+/admin/teams POST -> Admin Provision Teams
+/admin/reset POST -> Admin Reset
+/state GET -> Get State
+/participate POST -> Post Participate
+/broadcast POST -> Post Broadcast
+/action POST -> Post Action
+/leaderboard GET -> Get Leaderboard
+/leaderboard/html GET -> Get Leaderboard Html
+/logs GET -> Get Logs
+/admin/news POST -> Post News
+/news GET -> Get News
+/dashboard/snapshot GET -> Dashboard Snapshot
+/dashboard GET -> Dashboard
+/docs GET -> Docs Index
+/docs/rules GET -> Docs Rules
+/docs/api GET -> Docs Api
+/docs/cheatsheet GET -> Docs Cheatsheet
+/docs/rules.md GET -> Docs Rules Md
+/docs/api.md GET -> Docs Api Md

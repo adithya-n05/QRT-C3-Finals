@@ -11,13 +11,14 @@ trace quickly.
    decide where new files belong.
 3. `docs/C3_GAME_PROTOCOL.md` - gameplay, API, scoring, and deadline rules.
 4. `docs/COMPETITION_STRATEGY.md` - current tactical read and live playbook.
-5. `docs/AGENT_FIRST_HARNESS.md` - why the repo is shaped this way and how to keep it
+5. `docs/BACKTEST_RESULTS.md` - latest stored-log replay results.
+6. `docs/AGENT_FIRST_HARNESS.md` - why the repo is shaped this way and how to keep it
    legible.
-6. `src/c3_harness/runner.py` - runtime loop and phase dispatch.
-7. `src/c3_harness/telemetry.py` - local market event logging and replay capture.
-8. `src/c3_harness/backtest.py` - historical replay and counterfactual scoring.
-9. `tests/` - executable checks for strategy and harness behavior.
-10. `scripts/` - stage-2 runbook helpers (live capture entrypoint).
+7. `src/c3_harness/runner.py` - runtime loop and phase dispatch.
+8. `src/c3_harness/telemetry.py` - local market event logging and replay capture.
+9. `src/c3_harness/backtest.py` - historical replay and counterfactual scoring.
+10. `tests/` - executable checks for strategy and harness behavior.
+11. `scripts/` - stage-2 runbook helpers (live capture entrypoint).
 
 ## File Map
 
@@ -29,6 +30,7 @@ trace quickly.
 ├── pyproject.toml
 ├── docs/
 │   ├── AGENT_FIRST_HARNESS.md
+│   ├── BACKTEST_RESULTS.md
 │   ├── COMPETITION_STRATEGY.md
 │   ├── C3_GAME_PROTOCOL.md
 │   └── REPOSITORY_STRUCTURE.md
@@ -65,6 +67,7 @@ trace quickly.
 - `.env.example`: non-secret environment variable template.
 - `pyproject.toml`: Python project metadata.
 - `docs/AGENT_FIRST_HARNESS.md`: agent-first design principles and guardrails.
+- `docs/BACKTEST_RESULTS.md`: latest replay summaries from stored public logs.
 - `docs/COMPETITION_STRATEGY.md`: opponent findings, broadcast policy, betting
   guidance, and live operational plan.
 - `docs/C3_GAME_PROTOCOL.md`: local operational summary of the live C3 rules.

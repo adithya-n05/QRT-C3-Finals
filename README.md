@@ -67,5 +67,7 @@ PYTHONPATH=src python -m c3_harness.backtest --logs /path/to/logs.json --team-id
   game protocol and scoring rules.
 - [docs/COMPETITION_STRATEGY.md](docs/COMPETITION_STRATEGY.md): current
   opponent model, broadcast policy, and live playbook.
+- [docs/BACKTEST_RESULTS.md](docs/BACKTEST_RESULTS.md): latest stored-log
+  replay results.
 - [docs/AGENT_FIRST_HARNESS.md](docs/AGENT_FIRST_HARNESS.md): design principles
   for keeping this repo useful to future coding agents.

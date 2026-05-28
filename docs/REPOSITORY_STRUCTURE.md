@@ -38,6 +38,8 @@ trace quickly.
 │       ├── config.py
 │       ├── runner.py
 │       └── strategy.py
+├── tools/
+│   └── analyze_public_logs.py
 └── tests/
     ├── test_betting.py
     └── test_strategy.py
@@ -61,6 +63,8 @@ trace quickly.
 - `src/c3_harness/config.py`: environment/config loading.
 - `src/c3_harness/runner.py`: polling loop and phase-specific submissions.
 - `src/c3_harness/strategy.py`: basic deterministic policy.
+- `tools/analyze_public_logs.py`: read-only public log summarizer for opponent
+  modeling during practice.
 - `tests/`: standard-library `unittest` checks.
 
 ## Where To Put New Work

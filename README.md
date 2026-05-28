@@ -27,6 +27,12 @@ PYTHONPATH=src python -m c3_harness.runner --live
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
+## Public Log Analysis
+
+```bash
+python tools/analyze_public_logs.py
+```
+
 ## Documentation
 
 - [docs/REPOSITORY_STRUCTURE.md](docs/REPOSITORY_STRUCTURE.md): file map and

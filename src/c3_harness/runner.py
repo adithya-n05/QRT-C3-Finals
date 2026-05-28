@@ -252,14 +252,13 @@ def main(argv: list[str] | None = None) -> int:
 
     config = HarnessConfig.from_env(live=args.live)
     if not config.game_key:
-        print(
-            "C3_GAME_KEY is not set; authenticated /state calls will fail. "
-            "Set it before running the harness."
-        )
         if args.check:
-            # Keep running connectivity checks for public endpoints in read-only mode.
-            config = HarnessConfig.from_env(live=False)
+            print("C3_GAME_KEY is not set; /state check will report auth_failed.")
         else:
+            print(
+                "C3_GAME_KEY is not set; authenticated /state calls will fail. "
+                "Set it before running the harness."
+            )
             return 2
 
     logger = MarketLogger(
